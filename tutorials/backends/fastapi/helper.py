@@ -31,7 +31,7 @@ class FastAPIServer:
 
         # Command to activate the virtual environment and run the FastAPI server
         command = (
-            f"source {self.venv_path}/bin/activate && uvicorn {self.app_module} --reload --port {self.port}"
+            f"source {self.venv_path}/bin/activate && uvicorn {self.app_module} --reload --port {self.port} --timeout-keep-alive 600"
         )
         
         # Start the server process
