@@ -13,19 +13,14 @@ Setting up an admin user allows for safer and more manageable account administra
 
 ## Why Use IAM Identity Center for Human Users Instead of IAM Users?
 
-AWS IAM Identity Center is the preferred method for managing human users because it offers several advantages over creating standalone IAM users:
+Use AWS IAM Identity Center instead of standard IAM when you need a centralized way to manage user access across multiple AWS accounts within an organization, providing a single sign-on experience and simplifying identity management, especially when dealing with a large number of accounts or applications beyond just AWS services; essentially, IAM Identity Center offers a more streamlined approach for managing workforce access across various cloud applications, while standard IAM is better for managing access within a single AWS account. 
 
-- Centralized Identity Management: IAM Identity Center allows users to log in once and access multiple AWS accounts without managing separate credentials for each account.
+Key differences:
+- Multi-account management: IAM Identity Center allows you to manage user access across all accounts within an AWS Organization, whereas standard IAM is primarily focused on managing access within a single account. 
 
-- Improved Security: IAM Identity Center integrates with external identity providers (e.g., Microsoft Entra ID, Okta, Google Workspace), reducing the need for AWS-managed credentials.
+- Single Sign-On (SSO): IAM Identity Center provides a unified SSO experience for users to access various applications and AWS accounts with a single set of credentials, while standard IAM does not offer this built-in functionality. 
 
-- Automatic Credential Expiry: Unlike IAM Users, IAM Identity Center provides temporary credentials, minimizing the risk of long-lived access keys being compromised.
-
-- Easier User Lifecycle Management: Users can be added, removed, or assigned permissions at the group level, simplifying onboarding and offboarding.
-
-- Multi-Factor Authentication (MFA): IAM Identity Center enforces MFA at the organizational level, ensuring better security compliance.
-
-- Better Auditing & Monitoring: Logging and tracking user actions across multiple AWS accounts is easier with IAM Identity Center and AWS CloudTrail.
+- Centralized Identity Source: With IAM Identity Center, you can connect to your existing identity provider (like Active Directory) and use it to manage user access across your AWS environment. 
 
 ## Note on Permission Sets
 
