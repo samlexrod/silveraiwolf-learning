@@ -11,6 +11,22 @@ The AWS root user has unrestricted access to all resources and settings within a
 
 Setting up an admin user allows for safer and more manageable account administration while ensuring security and compliance.
 
+## Why Use IAM Identity Center for Human Users Instead of IAM Users?
+
+AWS IAM Identity Center is the preferred method for managing human users because it offers several advantages over creating standalone IAM users:
+
+- Centralized Identity Management: IAM Identity Center allows users to log in once and access multiple AWS accounts without managing separate credentials for each account.
+
+- Improved Security: IAM Identity Center integrates with external identity providers (e.g., Microsoft Entra ID, Okta, Google Workspace), reducing the need for AWS-managed credentials.
+
+- Automatic Credential Expiry: Unlike IAM Users, IAM Identity Center provides temporary credentials, minimizing the risk of long-lived access keys being compromised.
+
+- Easier User Lifecycle Management: Users can be added, removed, or assigned permissions at the group level, simplifying onboarding and offboarding.
+
+- Multi-Factor Authentication (MFA): IAM Identity Center enforces MFA at the organizational level, ensuring better security compliance.
+
+- Better Auditing & Monitoring: Logging and tracking user actions across multiple AWS accounts is easier with IAM Identity Center and AWS CloudTrail.
+
 ## Note on Permission Sets
 
 In this tutorial, we are setting up the `AdministratorAccess` permission set for simplicity. However, best practices recommend creating a **custom permission set** that follows the **principle of least privilege**. This means granting users only the permissions they need to perform their tasks, reducing security risks and limiting potential damage in case of compromised credentials.
