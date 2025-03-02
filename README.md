@@ -53,7 +53,7 @@ It is mainly focused in the following areas:
 - [x] [FastAPI Real-time API](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-real-time-api.ipynb)
 - [x] [IAM Identity Center Admin Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/setup-first-admin-iam-identity-center.md)
 - [x] [KMS IAM-ICA Security Team Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/iam-identity-center-kms-role-setup.md)
-- [FastAPI Websocket Gemma2 Chatbot](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-model-serving-with-chat.ipynb)
+- [x] [FastAPI Websocket Gemma2 Chatbot](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-model-serving-with-chat.ipynb)
 
 ## Work in Progress
 
