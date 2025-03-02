@@ -1,6 +1,8 @@
 import subprocess
 import os
 import warnings
+import signal
+import nest_asyncio
 
 class FastAPIServer:
     """
@@ -20,6 +22,7 @@ class FastAPIServer:
         self.venv_path = venv_path
         self.app_module = app_module
         self.process = None
+        
 
     def run(self):
         """
@@ -29,9 +32,10 @@ class FastAPIServer:
             print("FastAPI server is already running.")
             return
 
+        nest_asyncio.apply()
         # Command to activate the virtual environment and run the FastAPI server
         command = (
-            f"source {self.venv_path}/bin/activate && uvicorn {self.app_module} --reload --port {self.port} --timeout-keep-alive 600"
+            f"source {self.venv_path}/bin/activate && uvicorn {self.app_module} --reload --port {self.port} --timeout-keep-alive 300"
         )
         
         # Start the server process
@@ -56,6 +60,7 @@ class FastAPIServer:
             print("FastAPI server stopped.")
         except Exception as e:
             print(f"Error stopping FastAPI server: {e}")
+            
 
 def run_fastapi(port):
     """
