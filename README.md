@@ -48,18 +48,21 @@ It is mainly focused in the following areas:
 - A/B Testing
 - Software Engineering Best Practices for Data Science Projects
 
-## Completed Tutorials
-- [x] [FastAPI Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/tools-and-frameworks/fastapi/fastapi-quickstart.ipynb)
-- [x] [FastAPI Real-time API](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/fastapi/fastapi-real-time-api.ipynb)
+## Top 5 Recently Completed Tutorials
+- [x] [FastAPI Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-quickstart.ipynb)
+- [x] [FastAPI Real-time API](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-real-time-api.ipynb)
+- [x] [IAM Identity Center Admin Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/setup-first-admin-iam-identity-center.md)
+- [x] [KMS IAM-ICA Security Team Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/iam-identity-center-kms-role-setup.md)
+- [FastAPI Websocket Gemma2 Chatbot](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-model-serving-with-chat.ipynb)
 
 ## Work in Progress
 
-- [ ] [FastAPI Pydantic Models](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/tools-and-frameworks/fastapi/fastapi-pydantic-models.ipynb)
-- [ ] [MLflow FastAPI Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/mlflow/mlflow-fastapi-integration.ipynb)
-- [ ] [FastAPI Websockets Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/fastapi/fastapi-websockets-integration.ipynb)
-- [ ] [FastAPI Model Serving](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/fastapi/fastapi-model-serving.ipynb)
-- [ ] [Dockerize FastAPI App](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/docker/dockerize-fastapi-app.ipynb)
-- [ ] [Deploy FastAPI with Kubernetes](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/tools-and-frameworks/docker/deploy-fastapi-with-kubernetes.ipynb)
+- [ ] [FastAPI Pydantic Models](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-pydantic-models.ipynb)
+- [ ] [MLflow FastAPI Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/mlflow/mlflow-fastapi-integration.ipynb)
+- [ ] [FastAPI Websockets Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/fastapi/fastapi-websockets-integration.ipynb)
+- [ ] [FastAPI Model Serving](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/fastapi/fastapi-model-serving.ipynb)
+- [ ] [Dockerize FastAPI App](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/docker/dockerize-fastapi-app.ipynb)
+- [ ] [Deploy FastAPI with Kubernetes](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/docker/deploy-fastapi-with-kubernetes.ipynb)
 - [ ] [Real-time Streaming with Kafka](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/real-time-data/real-time-streaming-with-kafka.ipynb)
 - [ ] [Real-time Ingestion with Kafka](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/data-ingestion/real-time-ingestion-with-kafka.ipynb)
 - [ ] [Real-time Analytics with Flink](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/real-time-data/real-time-analytics-with-flink.ipynb)
