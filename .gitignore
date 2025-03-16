@@ -157,4 +157,6 @@ static/
 **/saved_model/**
 main.py
 
+# Do not include the following directories
 **/kafka/*
+**/.ipynb_checkpoints/*
