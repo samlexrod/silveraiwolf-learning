@@ -156,3 +156,5 @@ static/
 *.pt
 **/saved_model/**
 main.py
+
+**/kafka/*
