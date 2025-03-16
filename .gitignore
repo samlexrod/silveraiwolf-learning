@@ -160,3 +160,4 @@ main.py
 # Do not include the following directories
 **/kafka/*
 **/.ipynb_checkpoints/*
+**/.vscode/*
