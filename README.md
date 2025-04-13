@@ -48,31 +48,32 @@ It is mainly focused in the following areas:
 - A/B Testing
 - Software Engineering Best Practices for Data Science Projects
 
-## Top 5 Recently Completed Tutorials
-- [x] [FastAPI Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-quickstart.ipynb)
-- [x] [FastAPI Real-time API](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-real-time-api.ipynb)
+## Top 6 Recently Completed Tutorials
+- [x] [DevOps IAM-ICA Team Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/iam-identity-center-devops-role-setup.md)
 - [x] [IAM Identity Center Admin Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/setup-first-admin-iam-identity-center.md)
 - [x] [KMS IAM-ICA Security Team Setup](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/devops-and-deployment/aws/security/iam-identity-center-kms-role-setup.md)
 - [x] [FastAPI Websocket Gemma2 Chatbot](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-model-serving-with-chat.ipynb)
+- [x] [FastAPI Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-quickstart.ipynb)
+- [x] [FastAPI Real-time API](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-real-time-api.ipynb)
 
 ## Work in Progress
-
-- [ ] [FastAPI Pydantic Models](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/backends/fastapi/fastapi-pydantic-models.ipynb)
-- [ ] [MLflow FastAPI Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/mlflow/mlflow-fastapi-integration.ipynb)
-- [ ] [FastAPI Websockets Integration](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/fastapi/fastapi-websockets-integration.ipynb)
-- [ ] [FastAPI Model Serving](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/fastapi/fastapi-model-serving.ipynb)
-- [ ] [Dockerize FastAPI App](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/docker/dockerize-fastapi-app.ipynb)
-- [ ] [Deploy FastAPI with Kubernetes](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/backends/docker/deploy-fastapi-with-kubernetes.ipynb)
-- [ ] [Real-time Streaming with Kafka](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/real-time-data/real-time-streaming-with-kafka.ipynb)
-- [ ] [Real-time Ingestion with Kafka](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/data-ingestion/real-time-ingestion-with-kafka.ipynb)
-- [ ] [Real-time Analytics with Flink](https://github.com/samlexrod/sakeoflearning/blob/master/tutorials/data-engineering/real-time-data/real-time-analytics-with-flink.ipynb)
-- [ ] [Gradio Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/dash/gradio-quickstart.ipynb)
-- [ ] [Gradio for NLP Models](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/gradio/gradio-for-nlp-models.ipynb)
-- [ ] [Gradio for Computer Vision](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/gradio/gradio-for-computer-vision.ipynb)
-- [ ] [Streamlit Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/streamlit/streamlit-quickstart.ipynb)
-- [ ] [Streamlit Dashboards](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/streamlit/streamlit-dashboards.ipynb)
-- [ ] [Streamlit for ML Apps](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/streamlit/streamlit-for-ml-apps.ipynb)
-- [ ] [Dash for Interactive Visualizations](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/dash/dash-for-interactive-visualizations.ipynb)
-- [ ] [Dash Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/dash/dash-quickstart.ipynb)
-- [ ] [Panel for Dashboards](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/panel/panel-for-dashboards.ipynb)
-- [ ] [Panel Quickstart](https://github.com/samlexrod/silveraiwolf-learning/blob/master/tutorials/ai-applicaitons/panel/panel-quickstart.ipynb)
+- [ ] [Setting up Serverless MSK]
+- [ ] FastAPI Pydantic Models
+- [ ] MLflow FastAPI Integration
+- [ ] FastAPI Websockets Integration
+- [ ] FastAPI Model Serving
+- [ ] Dockerize FastAPI App
+- [ ] Deploy FastAPI with Kubernetes
+- [ ] Real-time Streaming with Kafka
+- [ ] Real-time Ingestion with Kafka
+- [ ] Real-time Analytics with Flink
+- [ ] Gradio Quickstart
+- [ ] Gradio for NLP Models
+- [ ] Gradio for Computer Vision
+- [ ] Streamlit Quickstart
+- [ ] Streamlit Dashboards
+- [ ] Streamlit for ML Apps
+- [ ] Dash for Interactive Visualizations
+- [ ] Dash Quickstart
+- [ ] Panel for Dashboards
+- [ ] Panel Quickstart
