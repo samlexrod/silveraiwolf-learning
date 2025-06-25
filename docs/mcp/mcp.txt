@@ -1,0 +1,17 @@
+# Guides
+
+- [MCP Protocol Overview](https://your-docs.example.com/mcp/overview): Introduction to the Model Context Protocol (MCP), its goals, components (tools, resources, prompts), and how it enables LLM tooling.
+- [Quickstart: Getting Started with MCP Server](https://your-docs.example.com/mcp/quickstart): Step‑by‑step setup guide—including installation, `pip install mcp`, creating your first server, and running locally with the inspector.
+- [Defining Tools (`@mcp.tool`) Best Practices](https://your-docs.example.com/mcp/guides/tools): How to write action-oriented tool functions—decorators, metadata, error handling, type hints, and examples.
+- [Defining Resources (`@mcp.resource`)](https://your-docs.example.com/mcp/guides/resources): Designing readonly fetch endpoints—URL templates, JSON return types, schema usage, and versioning guidance.
+- [Using Prompt Templates (`@mcp.prompt`)](https://your-docs.example.com/mcp/guides/prompts): Optional prompt patterns for advanced workflows—use cases, syntax, and integration examples.
+- [Security and Authentication](https://your-docs.example.com/mcp/guides/security): OAuth 2.1, token-based access, input validation, sandboxing tools, and permissions model.
+- [Examples: Calculator, Slack Bot, DB API](https://your-docs.example.com/mcp/examples): Full examples showcasing typical MCP servers: calculator, email sender, Slack integration, and CRUD APIs.
+- [Best Practices & Architecture](https://your-docs.example.com/mcp/guides/best-practices): Naming conventions, minimal API surface, error handling, observability, versioning, and performance guidelines.
+- [Deployment & CI/CD](https://your-docs.example.com/mcp/guides/deployment): Running with `mcp run --transport http`, using Docker, serverless (Cloudflare/AWS Lambda), automated tests, and CI pipelines.
+- [Tools & Ecosystem](https://your-docs.example.com/mcp/ecosystem): MCP Inspector, mcp-doc server, community SDKs, adapters (e.g. LangGraph integration), and plugin lists.
+- [Tutorial: Integrate MCP with LLM Agents](https://your-docs.example.com/mcp/tutorials/agent-integration): Guide showing how to wrap your MCP endpoints in agents (LangChain, LangGraph, etc.), using fetch_logs/fetch_docs, memory patterns.
+- [Advanced: Stateful Sessions & Time Travel](https://your-docs.example.com/mcp/guides/stateful): Implementing context retention, checkpoints, time‑travel debugging with inspectors.
+- [Reference: Full Protocol Spec](https://your-docs.example.com/mcp/spec): Detailed JSON schemas, transport formats (HTTP, stdio), error-response formats, and version compatibility.
+- [Reference: CLI & Inspector Commands](https://your-docs.example.com/mcp/reference/cli): Descriptions of `mcp dev`, `mcp run`, inspection, logging flags, and debugging workflows.
+- [Changelog & Release Notes](https://your-docs.example.com/mcp/changelog): List of versions, new features, schema changes, and deprecation notices.

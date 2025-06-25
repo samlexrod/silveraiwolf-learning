@@ -1,0 +1,171 @@
+Model Context Protocol (MCP) Full Documentation
+
+MCP (Model Context Protocol) is an open protocol that standardizes how applications provide context to language models. It enables developers to expose tools, resources, and prompt templates in a consistent, model-agnostic way. MCP allows LLM applications like Claude, LangGraph, or Cursor to seamlessly interface with local and remote capabilities.
+
+Getting Started
+
+Install the MCP package:
+
+pip install mcp mcp[cli]
+
+Create a simple MCP server:
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("HelloMCP")
+
+@mcp.tool()
+def greet(name: str) -> str:
+    """Return a friendly greeting."""
+    return f"Hello, {name}!"
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+
+Start the server locally with the CLI and inspector:
+
+mcp dev hello.py
+
+You’ll see the inspector UI in your browser where you can test your tool.
+
+Tools
+
+Use @mcp.tool() to expose functions that perform actions.
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers."""
+    return a + b
+
+Tools:
+	•	Are invoked with tool.invoke
+	•	Use docstrings to provide descriptions
+	•	Should return simple values or JSON-serializable data
+	•	Can raise exceptions for errors
+
+Resources
+
+Resources expose data (e.g. files, APIs) through a URI-like identifier.
+
+@mcp.resource("weather://{city}")
+def weather(city: str) -> dict:
+    return {"forecast": "sunny", "temp": 27}
+
+Resources:
+	•	Use @mcp.resource(uri)
+	•	Support parameterized routes
+	•	Are read-only
+	•	Return JSON-like responses
+
+Use resource.fetch to call them.
+
+Prompts
+
+Prompt templates are optional reusable string templates.
+
+@mcp.prompt("summarize")
+def summarize_prompt(text: str) -> str:
+    return f"Summarize the following:\n{text}"
+
+These templates are fetched via prompt.invoke.
+
+Security Best Practices
+
+MCP servers are often exposed to AI clients, so:
+	•	Validate all input types
+	•	Use OAuth2 or secure API tokens
+	•	Avoid arbitrary evals or command execution
+	•	Use sandboxing (e.g. Docker, subprocess isolation)
+	•	Audit logs and monitor invocation counts
+
+Transport
+
+MCP supports several transports:
+	•	stdio for local dev
+	•	http for production APIs
+	•	sse for streaming responses
+
+Start a production server:
+
+mcp run hello.py --transport http
+
+Use the transport argument in mcp.run() to specify runtime mode.
+
+Inspector
+
+The CLI tool mcp dev launches an in-browser inspector for testing:
+	•	View all available tools/resources
+	•	Test inputs/outputs
+	•	See structured errors
+
+Full Example
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Calculator")
+
+@mcp.tool()
+def multiply(x: int, y: int) -> int:
+    return x * y
+
+@mcp.resource("square://{n}")
+def square(n: int) -> dict:
+    return {"input": n, "output": n * n}
+
+if __name__ == "__main__":
+    mcp.run(transport="http")
+
+Deployment
+
+You can deploy MCP servers via:
+	•	Docker
+	•	Cloud functions (AWS Lambda, Cloudflare Workers)
+	•	Static hosting (with HTTP transport)
+
+Recommended:
+	•	Add health check endpoint
+	•	Use gunicorn or uvicorn for production HTTP
+
+Protocol Reference
+
+All communication follows JSON-RPC 2.0.
+
+Supported methods:
+	•	capabilities – describes the server
+	•	tool.list – enumerate tools
+	•	tool.invoke – call a tool
+	•	resource.fetch – get a resource
+	•	prompt.invoke – use a prompt template
+
+Each method has an expected schema and input/output types. Refer to the MCP spec for complete details.
+
+Example Use Cases
+	•	Connect your backend APIs to LLMs
+	•	Add context from local files to agent workflows
+	•	Call tools like email, SMS, or math utilities
+	•	Build custom app connectors for Claude, LangGraph, etc.
+
+Changelog
+
+v0.1 – Initial MCP spec with stdio/HTTP, tools, resources
+
+v0.2 – Add prompt templates, better error handling
+
+v0.3 – Support version negotiation, streaming
+
+Upcoming:
+	•	Stateful session support
+	•	Enhanced telemetry and logging hooks
+	•	Plugin discovery and auto-registration
+
+Appendix
+	•	GitHub: https://github.com/modelcontext
+	•	Docs: https://modelcontextprotocol.io
+	•	IDE clients: Cursor, Claude, Zed
+	•	LLMs: Claude, GPT-4, Gemini (via LangGraph or LangChain)
+
+MCP is designed to make it simple and safe for models to use your code and data.
+
+⸻
+
+End of file.
