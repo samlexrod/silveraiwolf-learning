@@ -88,6 +88,8 @@ It is mainly focused in the following areas:
 
 ## MCP Server Setup
 
+> WARNING: Before you start, always inspect the .txt files the mcpdocs server is using to ensure they are secure. Never use --allowed-domains '*' and never use -urls with 'http://' or unknown urls.
+
 ### Leverage LangGraph's MCP Server on Cursor
 
 LangGraph's MCP Server offers an excellent starting point for MCP implementation. This straightforward server allows you to test MCP servers while learning about MCP functionality. You can use it as a foundation to create an MCP server for your own documentation. Specifically, SilverAIWolf's MCP docs can be leveraged to enhance the freshness of your context.
