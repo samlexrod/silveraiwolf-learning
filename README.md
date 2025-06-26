@@ -2,6 +2,8 @@
 
 ![SilverAIWolf Learning](./silveraiwolf-logo.png)
 
+> NOTE: I am in the process of refactoring all tutorials outside of jupyter notebooks unless the use is data science experimentation. Notbooks will always be acompanied by the corresponding tutorial to productionalization.
+
 ## Overview
 The purpose of this repository is to document my learning journey in the field of Data Science and Machine Learning and to share my knowledge with the community. I will be sharing tutorials, code snippets, and best practices that I have learned over the years. I will be using Python as the primary programming language and Jupyter Notebooks as the primary tool for documentation. However, other languages such as Scala and JavaScript may be used in some tutorials to demonstrate related concepts such as front-end development and big data processing.
 
