@@ -90,9 +90,8 @@ It is mainly focused in the following areas:
 
 > WARNING: Before you start, always inspect the .txt files the mcpdocs server is using to ensure they are secure. Never use --allowed-domains '*' and never use -urls with 'http://' or unknown urls.
 
-### Leverage LangGraph's MCP Server on Cursor
-
-LangGraph's MCP Server offers an excellent starting point for MCP implementation. This straightforward server allows you to test MCP servers while learning about MCP functionality. You can use it as a foundation to create an MCP server for your own documentation. Specifically, SilverAIWolf's MCP docs can be leveraged to enhance the freshness of your context.
+### Leverage LangChain-ai's MCP Server on Cursor
+LangChain-ai's MCP Server offers an excellent starting point for MCP implementation. This straightforward server allows you to test MCP servers while learning about MCP functionality. You can use it as a foundation to create an MCP server for your own documentation. Specifically, SilverAIWolf's MCP docs can be leveraged to enhance the freshness of your context.
 
 Start by testing the SilverAIWolf MCP Server on Terminal:
 
@@ -133,15 +132,28 @@ Continue by adding the following to your `.cursor/mcp.json` file:
         "--transport",
         "stdio"
       ]
+    },
+    "silveraiwolf-learning-<docname>": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcpdoc",
+        "mcpdoc",
+        "--urls",
+        "SilverAIWolf:<https://github.com/samlexrod/silveraiwolf-learning/blob/master/mcpdocs/mcp/<docname>.txt> SilverAIWolf:<https://github.com/samlexrod/silveraiwolf-learning/blob/master/mcpdocs/mcp/<docname>-full.txt>",
+        "--transport",
+        "stdio"
+      ]
     }
   }
 }
 ```
+Replace `<docname>` with the name of the documentation you want to use to extend the context.
 
 And then, add the following Cursor rule:
 
 ```
-for ANY questions about MCP, use the silveraiwolf-learning-mcp server to help answer --
+for ANY questions about <CONTEXT NAME>, use the silveraiwolf-learning-<docname> server to help answer --
 + call list_doc_sources tool to get the available llms.txt file
 + call fetch_docs tool to read it
 + reflect on the urls in mcp.txt 
@@ -150,4 +162,6 @@ for ANY questions about MCP, use the silveraiwolf-learning-mcp server to help an
 + use this to answer the question
 ```
 
-> Now Cursor will use the SilverAIWolf MCP Server to answer your questions related to MCP ensuring that the context is always up to date.
+CONTEXT NAME can be LangGraph, LangChain, MCP, etc.
+
+> Now Cursor will use the LangChain-ai MCP Server to answer your questions related to <CONTEXT NAME> ensuring that the context is always up to date.
