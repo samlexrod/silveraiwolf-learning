@@ -1,3 +1,10 @@
+import strawberry
+from typing import List
+from app.models.product import Product
+from app.models.supplier import Supplier
+from app.models.inventory import Inventory
+
+# Sample data for demonstration
 products_data = [
     Product(id=1, name="Widget", description="Basic Widget"),
     Product(id=2, name="Gadget", description="Advanced Gadget"),
@@ -25,3 +32,6 @@ class Query:
     @strawberry.field
     def get_inventory(self) -> List[Inventory]:
         return inventory_data
+
+# Create the schema
+schema = strawberry.Schema(query=Query)

@@ -1,0 +1,13 @@
+[env]
+PYTHONPATH = "."
+POSTGRES_PASSWORD = "pass"
+POSTGRES_URL = "postgresql+asyncpg://user:${POSTGRES_PASSWORD}@localhost/supplychain"
+POSTGRES_USER = "user"
+POSTGRES_DB = "supplychain"
+DEBUG = "true"
+HOST = "0.0.0.0"
+PORT = "8000"
+
+[tools]
+python = "3.11"
+uv = "latest"

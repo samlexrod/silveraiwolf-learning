@@ -1,12 +1,10 @@
 from sqlalchemy import Column, Integer, String, Table, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 import strawberry
 from typing import List
 
+from app.models import Base
 from app.models.product import Product
-
-Base = declarative_base()
 
 # Many-to-many link table
 supplier_products = Table(

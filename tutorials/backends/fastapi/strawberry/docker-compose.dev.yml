@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: strawberry-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      POSTGRES_DB: ${POSTGRES_DB:-supplychain}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-supplychain}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database Initialization
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: strawberry-db-init
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}
+      - POSTGRES_DB=${POSTGRES_DB:-supplychain}
+      - POSTGRES_HOST=postgres
+    command: ["uv", "run", "python", "init_db.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # GraphQL Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: strawberry-graphql-app
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}
+      - POSTGRES_DB=${POSTGRES_DB:-supplychain}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_URL=postgresql+asyncpg://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-pass}@postgres/${POSTGRES_DB:-supplychain}
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
