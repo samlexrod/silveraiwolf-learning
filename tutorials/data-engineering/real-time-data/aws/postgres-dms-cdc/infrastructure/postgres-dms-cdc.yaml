@@ -1,0 +1,930 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'PostgreSQL RDS Infrastructure with Logical Replication and DMS for CDC. This stack creates a PostgreSQL RDS instance configured for logical replication, along with AWS DMS resources to capture and replicate changes to S3. The infrastructure includes VPC networking, security groups, and necessary IAM roles for secure data replication.'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment type
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: RDS instance class
+
+  DBName:
+    Type: String
+    Default: cdcdb
+    Description: Database name
+
+  DBUsername:
+    Type: String
+    Default: postgres_admin
+    Description: Database admin username
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database admin password
+
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for VPC
+
+Resources:
+  # VPC and Network Resources
+  CDCVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-igw
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref CDCVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CDCVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-subnet-1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CDCVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-subnet-2
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CDCVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.3.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-subnet-1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CDCVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.4.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-subnet-2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CDCVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-rt
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # NAT Gateway for private subnets
+  # Note: For production environments, it's recommended to have multiple NAT Gateways
+  # (one per AZ) for high availability. This single NAT Gateway setup is suitable
+  # for development environments only.
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-nat
+        - Key: Environment
+          Value: !Ref Environment
+    DependsOn: InternetGateway
+
+  # Elastic IP for NAT Gateway
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-nat-eip
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route table for private subnets
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CDCVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-rt
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route for private subnets to NAT Gateway
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+    DependsOn: NatGateway
+
+  # Route table associations for private subnets
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # RDS Resources
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for PostgreSQL RDS
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-db-subnet-group
+        - Key: Environment
+          Value: !Ref Environment
+
+  PostgresParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Family: postgres17
+      Description: Parameter group for PostgreSQL CDC with AWS DMS
+      Parameters:
+        rds.logical_replication: '1'
+        max_replication_slots: '5'
+        max_wal_senders: '10'
+        max_worker_processes: '10'
+        wal_sender_timeout: '60000'
+        statement_timeout: '0'
+        idle_in_transaction_session_timeout: '0'
+        track_commit_timestamp: '1'
+        rds.force_ssl: '0'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-pg
+        - Key: Environment
+          Value: !Ref Environment
+
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ${AWS::StackName}-postgres
+      Engine: postgres
+      EngineVersion: 17.4
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: 20
+      StorageType: gp2
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: !Ref DBName
+      VPCSecurityGroups:
+        - !Ref PostgresSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: true
+      BackupRetentionPeriod: 7
+      MultiAZ: false
+      AutoMinorVersionUpgrade: true
+      DBParameterGroupName: !Ref PostgresParameterGroup
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-postgres
+
+  # IAM Resources
+  RDSUtilizationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: monitoring.rds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+  # S3 Resources
+  SinkBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-sink
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+
+  # DMS Resources
+  DMSSubnetGroup:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupDescription: Subnet group for DMS replication instance
+      ReplicationSubnetGroupIdentifier: !Sub ${AWS::StackName}-dms-subnet-group
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-dms-subnet-group
+        - Key: Environment
+          Value: !Ref Environment
+
+  DMSReplicationInstance:
+    Type: AWS::DMS::ReplicationInstance
+    Properties:
+      ReplicationInstanceClass: dms.t3.medium
+      ReplicationInstanceIdentifier: !Sub ${AWS::StackName}-replication-instance
+      AllocatedStorage: 50
+      MultiAZ: false
+      PubliclyAccessible: false
+      ReplicationSubnetGroupIdentifier: !Ref DMSSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DMSSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-replication-instance
+        - Key: Environment
+          Value: !Ref Environment
+
+  DMSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for DMS replication instance
+      VpcId: !Ref CDCVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Sub '{{resolve:ssm:${AWS::Region}:${AWS::AccountId}:parameter/_LocalMachineIP}}'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-dms-sg
+        - Key: Environment
+          Value: !Ref Environment
+
+  PostgresSourceEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointType: source
+      EngineName: postgres
+      ServerName: !GetAtt PostgresInstance.Endpoint.Address
+      Port: 5432
+      DatabaseName: !Ref DBName
+      Username: !Ref DBUsername
+      Password: !Ref DBPassword
+      ExtraConnectionAttributes: "heartbeatFrequency=1;heartbeatEnable=Y"
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-source-endpoint
+        - Key: Environment
+          Value: !Ref Environment
+
+  S3TargetEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointType: target
+      EngineName: s3
+      S3Settings:
+        BucketName: !Ref SinkBucket
+        ServiceAccessRoleArn: !GetAtt DMSTargetS3Role.Arn
+        CompressionType: GZIP
+        DataFormat: parquet
+        ParquetVersion: parquet-1-0
+        BucketFolder: "cdc-data"
+        TimestampColumnName: "dms_timestamp"
+        DatePartitionEnabled: true
+        DatePartitionSequence: YYYYMMDD
+        PreserveTransactions: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-target-endpoint
+        - Key: Environment
+          Value: !Ref Environment
+
+  DMSTargetS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: dms.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DMSS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${SinkBucket}
+                  - !Sub arn:aws:s3:::${SinkBucket}/*
+
+  # RDS Resources
+  PostgresSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for PostgreSQL RDS instance
+      VpcId: !Ref CDCVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Sub '{{resolve:ssm:${AWS::Region}:${AWS::AccountId}:parameter/_LocalMachineIP}}'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-postgres-sg
+        - Key: Environment
+          Value: !Ref Environment
+
+  # DMS Migration Task
+  DMSTask:
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      ReplicationTaskIdentifier: !Sub ${AWS::StackName}-migration-task
+      SourceEndpointArn: !Ref PostgresSourceEndpoint
+      TargetEndpointArn: !Ref S3TargetEndpoint
+      ReplicationInstanceArn: !Ref DMSReplicationInstance
+      MigrationType: full-load-and-cdc
+      TableMappings: !Sub |
+        {
+          "rules": [
+            {
+              "rule-type": "selection",
+              "rule-id": "1",
+              "rule-name": "1",
+              "object-locator": {
+                "schema-name": "public",
+                "table-name": "%"
+              },
+              "rule-action": "include"
+            }
+          ]
+        }
+      ReplicationTaskSettings: !Sub |
+        {
+          "TargetMetadata": {
+            "TargetSchema": "",
+            "LobMaxSize": 64,
+            "LobChunkSize": 0
+          },
+          "FullLoadSettings": {
+            "TargetTablePrepMode": "DO_NOTHING",
+            "CreatePkAfterFullLoad": false,
+            "StopTaskCachedChangesApplied": false,
+            "StopTaskCachedChangesNotApplied": false,
+            "MaxFullLoadSubTasks": 8,
+            "TransactionConsistencyTimeout": 600,
+            "CommitRate": 10000
+          },
+          "Logging": {
+            "EnableLogging": true,
+            "LogComponents": [
+              {
+                "Id": "TRANSFORMATION",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "SOURCE_UNLOAD",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "IO",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "TARGET_LOAD",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "PERFORMANCE",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "VALIDATOR_EXT",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              },
+              {
+                "Id": "TARGET_APPLY",
+                "Severity": "LOGGER_SEVERITY_DEFAULT"
+              }
+            ]
+          },
+          "ControlTablesSettings": {
+            "ControlSchema": "",
+            "CreateHistoryTable": false,
+            "HistoryTableName": "",
+            "HistoryTimeslotInMinutes": 5
+          },
+          "StreamBufferSettings": {
+            "StreamBufferCount": 3,
+            "StreamBufferSizeInMB": 8,
+            "CtrlStreamBufferSizeInMB": 5
+          },
+          "ChangeProcessingDdlHandlingPolicy": {
+            "HandleSourceTableDropped": true,
+            "HandleSourceTableTruncated": true,
+            "HandleSourceTableAltered": true
+          },
+          "ChangeProcessingTuning": {
+            "BatchApplyPreserveTransaction": true,
+            "BatchApplyTimeoutMin": 1,
+            "BatchApplyTimeoutMax": 30,
+            "BatchApplyMemoryLimit": 500,
+            "BatchSplitSize": 0,
+            "MinTransactionSize": 1000,
+            "CommitTimeout": 1,
+            "MemoryLimitTotal": 1024,
+            "MemoryKeepTime": 60,
+            "StatementCacheSize": 50
+          },
+          "PostProcessingRules": null,
+          "CharacterSetSettings": null,
+          "LoopbackPreventionSettings": null,
+          "BeforeImageSettings": null,
+          "ErrorBehavior": {
+            "DataErrorPolicy": "LOG_ERROR",
+            "DataTruncationErrorPolicy": "LOG_ERROR",
+            "DataErrorEscalationPolicy": "SUSPEND_TABLE",
+            "DataErrorEscalationCount": 0,
+            "TableErrorPolicy": "SUSPEND_TABLE",
+            "TableErrorEscalationPolicy": "STOP_TASK",
+            "TableErrorEscalationCount": 0,
+            "RecoverableErrorCount": -1,
+            "RecoverableErrorInterval": 5,
+            "RecoverableErrorThrottleMax": 1800,
+            "ApplyErrorDeletePolicy": "IGNORE_RECORD",
+            "ApplyErrorInsertPolicy": "LOG_ERROR",
+            "ApplyErrorUpdatePolicy": "LOG_ERROR"
+          },
+          "ValidationSettings": {
+            "EnableValidation": false,
+            "ValidationMode": "ROW_LEVEL",
+            "ThreadCount": 5,
+            "PartitionSize": 10000,
+            "FailureMaxCount": 10000,
+            "RecordFailureDelayInMinutes": 5,
+            "ValidationOnly": false,
+            "ValidationPartialLobSize": 0
+          },
+          "TuningSettings": {
+            "TuningTargetSchema": "",
+            "TuningTargetTable": "",
+            "TuningTargetColumn": "",
+            "TuningTargetS3Settings": null
+          }
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-migration-task
+        - Key: Environment
+          Value: !Ref Environment
+
+  StackDeletionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt StackDeletionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import time
+
+          def handler(event, context):
+              cloudformation = boto3.client('cloudformation')
+              dms = boto3.client('dms')
+              s3 = boto3.client('s3')
+              stack_name = event['stack_name']
+              
+              try:
+                  # Get the DMS task ARN and S3 bucket name from the stack outputs
+                  response = cloudformation.describe_stacks(StackName=stack_name)
+                  outputs = response['Stacks'][0]['Outputs']
+                  task_arn = next((output['OutputValue'] for output in outputs if output['OutputKey'] == 'DMSTaskArn'), None)
+                  bucket_name = next((output['OutputValue'] for output in outputs if output['OutputKey'] == 'SinkBucketName'), None)
+                  
+                  # Empty the S3 bucket if it exists
+                  if bucket_name:
+                      try:
+                          print(f"Emptying S3 bucket: {bucket_name}")
+                          # List all objects in the bucket
+                          paginator = s3.get_paginator('list_objects_v2')
+                          for page in paginator.paginate(Bucket=bucket_name):
+                              if 'Contents' in page:
+                                  # Delete objects in batches of 1000 (S3 limit)
+                                  objects_to_delete = [{'Key': obj['Key']} for obj in page['Contents']]
+                                  if objects_to_delete:
+                                      s3.delete_objects(
+                                          Bucket=bucket_name,
+                                          Delete={'Objects': objects_to_delete}
+                                      )
+                                      print(f"Deleted {len(objects_to_delete)} objects from bucket {bucket_name}")
+                      except Exception as e:
+                          print(f"Error emptying S3 bucket: {str(e)}")
+                  
+                  if task_arn:
+                      # Stop the DMS task if it's running
+                      try:
+                          task_status = dms.describe_replication_tasks(Filters=[{'Name': 'replication-task-arn', 'Values': [task_arn]}])['ReplicationTasks'][0]['Status']
+                          if task_status == 'running':
+                              print(f"Stopping DMS task: {task_arn}")
+                              dms.stop_replication_task(ReplicationTaskArn=task_arn)
+                              # Wait for the task to stop
+                              while True:
+                                  status = dms.describe_replication_tasks(Filters=[{'Name': 'replication-task-arn', 'Values': [task_arn]}])['ReplicationTasks'][0]['Status']
+                                  if status == 'stopped':
+                                      break
+                                  time.sleep(10)
+                      except Exception as e:
+                          print(f"Error stopping DMS task: {str(e)}")
+                  
+                  # Delete the stack
+                  cloudformation.delete_stack(StackName=stack_name)
+                  print(f"Initiated deletion of stack: {stack_name}")
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps(f'Stack deletion initiated for {stack_name}')
+                  }
+              except Exception as e:
+                  print(f"Error deleting stack: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps(f'Error deleting stack: {str(e)}')
+                  }
+
+      Timeout: 300
+      Environment:
+        Variables:
+          STACK_NAME: !Ref AWS::StackName
+
+  StackDeletionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: StackDeletionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+              - Effect: Allow
+                Action:
+                  - lambda:RemovePermission
+                  - lambda:AddPermission
+                  - lambda:GetPolicy
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-StackDeletionFunction-*
+              - Effect: Allow
+                Action:
+                  - ec2:DeleteRoute
+                  - ec2:DeleteRouteTable
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DeleteSubnet
+                  - ec2:DeleteVpc
+                  - ec2:DetachInternetGateway
+                  - ec2:DeleteInternetGateway
+                  - ec2:DisassociateRouteTable
+                  - ec2:ReleaseAddress
+                  - ec2:DeleteNatGateway
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - rds:DeleteDBInstance
+                  - rds:DeleteDBSubnetGroup
+                  - rds:DeleteDBParameterGroup
+                Resource: !Sub arn:aws:rds:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action:
+                  - s3:DeleteBucket
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource: 
+                  - !Sub arn:aws:s3:::${SinkBucket}
+                  - !Sub arn:aws:s3:::${SinkBucket}/*
+              - Effect: Allow
+                Action:
+                  - dms:DeleteReplicationInstance
+                  - dms:DeleteEndpoint
+                  - dms:DeleteReplicationTask
+                  - dms:DeleteReplicationSubnetGroup
+                  - dms:StopReplicationTask
+                  - dms:DescribeReplicationTasks
+                Resource: !Sub arn:aws:dms:${AWS::Region}:${AWS::AccountId}:*
+
+  StackDeletionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Rule to trigger stack deletion after 30 minutes
+      ScheduleExpression: rate(30 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt StackDeletionFunction.Arn
+          Id: StackDeletionTarget
+          Input: !Sub '{"stack_name": "${AWS::StackName}"}'
+
+  StackDeletionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref StackDeletionFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt StackDeletionRule.Arn
+
+  # Lambda function to load sample data
+  SampleDataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt SampleDataRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import psycopg2
+          import time
+          import os
+
+          def handler(event, context):
+              # Get database connection details from environment variables
+              db_host = os.environ['DB_HOST']
+              db_name = os.environ['DB_NAME']
+              db_user = os.environ['DB_USER']
+              db_password = os.environ['DB_PASSWORD']
+              
+              # Sample SQL data to insert
+              sample_data_sql = """
+              -- Create sample tables
+              CREATE TABLE IF NOT EXISTS customers (
+                  customer_id SERIAL PRIMARY KEY,
+                  first_name VARCHAR(50),
+                  last_name VARCHAR(50),
+                  email VARCHAR(100),
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              );
+              
+              CREATE TABLE IF NOT EXISTS orders (
+                  order_id SERIAL PRIMARY KEY,
+                  customer_id INTEGER REFERENCES customers(customer_id),
+                  order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  total_amount DECIMAL(10, 2)
+              );
+              
+              CREATE TABLE IF NOT EXISTS order_items (
+                  order_item_id SERIAL PRIMARY KEY,
+                  order_id INTEGER REFERENCES orders(order_id),
+                  product_name VARCHAR(100),
+                  quantity INTEGER,
+                  unit_price DECIMAL(10, 2)
+              );
+              
+              -- Insert sample data
+              INSERT INTO customers (first_name, last_name, email) VALUES
+                  ('John', 'Doe', 'john.doe@example.com'),
+                  ('Jane', 'Smith', 'jane.smith@example.com'),
+                  ('Bob', 'Johnson', 'bob.johnson@example.com'),
+                  ('Alice', 'Williams', 'alice.williams@example.com'),
+                  ('Charlie', 'Brown', 'charlie.brown@example.com');
+              
+              INSERT INTO orders (customer_id, total_amount) VALUES
+                  (1, 150.00),
+                  (1, 75.50),
+                  (2, 200.00),
+                  (3, 125.75),
+                  (4, 300.00);
+              
+              INSERT INTO order_items (order_id, product_name, quantity, unit_price) VALUES
+                  (1, 'Laptop', 1, 150.00),
+                  (2, 'Mouse', 1, 25.50),
+                  (2, 'Keyboard', 1, 50.00),
+                  (3, 'Monitor', 1, 200.00),
+                  (4, 'Headphones', 1, 125.75),
+                  (5, 'Printer', 1, 300.00);
+              """
+              
+              try:
+                  # Connect to the database
+                  conn = psycopg2.connect(
+                      host=db_host,
+                      database=db_name,
+                      user=db_user,
+                      password=db_password
+                  )
+                  
+                  # Create a cursor
+                  cur = conn.cursor()
+                  
+                  # Execute the SQL script
+                  cur.execute(sample_data_sql)
+                  
+                  # Commit the transaction
+                  conn.commit()
+                  
+                  # Close the cursor and connection
+                  cur.close()
+                  conn.close()
+                  
+                  print("Sample data loaded successfully")
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Sample data loaded successfully')
+                  }
+              except Exception as e:
+                  print(f"Error loading sample data: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps(f'Error loading sample data: {str(e)}')
+                  }
+
+      Timeout: 60
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt PostgresInstance.Endpoint.Address
+          DB_NAME: !Ref DBName
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+
+  # IAM role for the sample data Lambda function
+  SampleDataRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SampleDataPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource: !Sub arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${PostgresInstance.DBInstanceIdentifier}/${DBUsername}
+
+  # Custom resource to trigger the sample data Lambda function
+  SampleDataTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt SampleDataFunction.Arn
+      DmsTaskArn: !Ref DMSTask
+    DependsOn: DMSTask
+
+  # Lambda permission for the custom resource
+  SampleDataPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SampleDataFunction
+      Principal: cloudformation.amazonaws.com
+
+  # Lambda layer for psycopg2
+  Psycopg2Layer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.9
+      Content:
+        ZipFile: |
+          # This is a placeholder. In a real implementation, you would need to create a zip file with psycopg2
+          # For example: pip install psycopg2-binary -t python/ && cd python && zip -r ../psycopg2-layer.zip .
+      Description: Layer containing psycopg2 for PostgreSQL connections
+      LayerName: !Sub ${AWS::StackName}-psycopg2-layer
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, 'prod']
+  IsDev: !Equals [!Ref Environment, 'dev']
+
+Outputs:
+  RDSEndpoint:
+    Description: PostgreSQL RDS Endpoint
+    Value: !GetAtt PostgresInstance.Endpoint.Address
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref CDCVPC
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
+    Value: !Ref PrivateSubnet2
+    
+  SinkBucketName:
+    Description: S3 Bucket for CDC Sink
+    Value: !Ref SinkBucket
+
+  DMSReplicationInstanceArn:
+    Description: ARN of the DMS replication instance
+    Value: !Ref DMSReplicationInstance
+
+  PostgresSourceEndpointArn:
+    Description: ARN of the PostgreSQL source endpoint
+    Value: !Ref PostgresSourceEndpoint
+
+  S3TargetEndpointArn:
+    Description: ARN of the S3 target endpoint
+    Value: !Ref S3TargetEndpoint
+
+  DMSTaskArn:
+    Description: ARN of the DMS migration task
+    Value: !Ref DMSTask 

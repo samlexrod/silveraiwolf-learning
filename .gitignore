@@ -161,3 +161,27 @@ main.py
 **/kafka/*
 **/.ipynb_checkpoints/*
 **/.vscode/*
+
+# Do not include the following directories
+target/
+dbt_packages/
+logs/
+
+.DS_Store
+
+# Infrastructure deployment files
+# Environment files
+.env
+.env.local
+.env.production
+
+# AWS credentials and config
+.aws/
+aws-credentials
+
+# CloudFormation outputs
+*.output
+*.json
+
+# OS files (additional)
+Thumbs.db
