@@ -1,0 +1,19 @@
+name: news-classifier-agent
+
+conda_env: conda.yaml
+
+entry_points:
+  track_a_external:
+    parameters:
+      provider: {type: string, default: "openai"}
+    command: "python track_a_external/experiment_external.py --provider {provider}"
+
+  track_b_internal:
+    parameters:
+      model: {type: string, default: "databricks-dbrx-instruct"}
+    command: "python track_b_internal/experiment_internal.py --model {model}"
+
+  main:
+    parameters:
+      track: {type: string, default: "both"}
+    command: "python main.py --track {track}"
