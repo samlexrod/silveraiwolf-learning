@@ -23,3 +23,6 @@ entry_points:
 
   promote_challenger:
     command: "python scripts/promote_to_production.py"
+
+  daily_inference:
+    command: "python scripts/daily_inference.py"

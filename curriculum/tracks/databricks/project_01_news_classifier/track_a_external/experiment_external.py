@@ -274,19 +274,45 @@ def run_experiment(
         # Log model using PythonModel
         print("\n[7/7] Logging model artifact...")
 
-        # Create a simple wrapper class
+        # Create a live model wrapper that calls the LLM
         class NewsClassifierModel(mlflow.pyfunc.PythonModel):
+            """Live news classifier model - calls LLM APIs during prediction"""
+
+            def __init__(self, provider: str, model_name: str):
+                self.provider = provider
+                self.model_name = model_name
+
             def predict(self, context, model_input):
-                """Predict method for MLflow model"""
-                # model_input is a pandas DataFrame or dict
+                """Predict method for MLflow model - calls LLM APIs"""
                 import pandas as pd
+                import os
+                import sys
+
+                # Add parent directory to path for imports
+                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+                from track_a_external.external_agent import ExternalNewsClassifierAgent
+
+                # Initialize agent with same configuration
+                agent = ExternalNewsClassifierAgent(
+                    provider=self.provider,
+                    model=self.model_name,
+                    use_databricks_secrets=False  # Use env vars for inference
+                )
 
                 if isinstance(model_input, pd.DataFrame):
                     results = []
                     for _, row in model_input.iterrows():
+                        # Extract title and content from input
+                        title = row.get("title", "")
+                        content = row.get("content", "")
+
+                        # Call the LLM to classify
+                        classification = agent.classify(title, content)
+
                         result = {
-                            "category": row.get("category", "Unknown"),
-                            "sentiment": row.get("sentiment", "Unknown")
+                            "category": classification.get("category", "Unknown"),
+                            "sentiment": classification.get("sentiment", "Unknown")
                         }
                         results.append(result)
                     return pd.DataFrame(results)
@@ -317,7 +343,7 @@ def run_experiment(
         # Log the model with signature
         mlflow.pyfunc.log_model(
             artifact_path="model",
-            python_model=NewsClassifierModel(),
+            python_model=NewsClassifierModel(provider=provider, model_name=agent.model),
             signature=signature,
             input_example=input_example,
             pip_requirements=[

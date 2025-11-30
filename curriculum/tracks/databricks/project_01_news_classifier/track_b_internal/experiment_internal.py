@@ -267,19 +267,40 @@ def run_experiment(
         # Log model using PythonModel
         print("\n[7/7] Logging model artifact...")
 
-        # Create a simple wrapper class
+        # Create a live model wrapper that calls the Databricks Foundation Model
         class NewsClassifierModel(mlflow.pyfunc.PythonModel):
+            """Live news classifier model - calls Databricks Foundation Model APIs"""
+
+            def __init__(self, model_name: str):
+                self.model_name = model_name
+
             def predict(self, context, model_input):
-                """Predict method for MLflow model"""
-                # model_input is a pandas DataFrame or dict
+                """Predict method for MLflow model - calls Databricks Foundation Model APIs"""
                 import pandas as pd
+                import os
+                import sys
+
+                # Add parent directory to path for imports
+                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+                from track_b_internal.internal_agent import InternalNewsClassifierAgent
+
+                # Initialize agent with same configuration
+                agent = InternalNewsClassifierAgent(model=self.model_name)
 
                 if isinstance(model_input, pd.DataFrame):
                     results = []
                     for _, row in model_input.iterrows():
+                        # Extract title and content from input
+                        title = row.get("title", "")
+                        content = row.get("content", "")
+
+                        # Call the Databricks Foundation Model to classify
+                        classification = agent.classify(title, content)
+
                         result = {
-                            "category": row.get("category", "Unknown"),
-                            "sentiment": row.get("sentiment", "Unknown")
+                            "category": classification.get("category", "Unknown"),
+                            "sentiment": classification.get("sentiment", "Unknown")
                         }
                         results.append(result)
                     return pd.DataFrame(results)
@@ -310,7 +331,7 @@ def run_experiment(
         # Log the model with signature
         mlflow.pyfunc.log_model(
             artifact_path="model",
-            python_model=NewsClassifierModel(),
+            python_model=NewsClassifierModel(model_name=agent.model),
             signature=signature,
             input_example=input_example,
             pip_requirements=[

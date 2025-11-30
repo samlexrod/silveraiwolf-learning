@@ -27,6 +27,9 @@ make run-all
 
 # Promote challenger to champion (after review)
 make promote
+
+# Run daily production inference with champion model (optional)
+make daily-inference
 ```
 
 ## Experimental Strategy
@@ -648,7 +651,131 @@ with DAG('news_classifier_promotion', ...) as dag:
 
 ---
 
-### Phase 5: Production Deployment (MLproject) 🚀
+### Phase 5: Daily Inference (Production Model Serving) 🚀
+
+**Run predictions using the champion (production) model on data.**
+
+This is a production inference pipeline that demonstrates how to load the champion model from Unity Catalog and run predictions. It's designed for daily scheduled execution (e.g., via Airflow/cron) to serve the current production model.
+
+#### Using Make (Recommended)
+
+```bash
+# Run daily inference with champion (production) model
+make daily-inference
+```
+
+#### Using MLflow Projects (for Airflow/Scheduled Jobs)
+
+```bash
+# Run via MLflow entry point
+mlflow run . -e daily_inference
+```
+
+#### How It Works
+
+1. **Load Model**: Fetches the `champion` model from Unity Catalog by alias
+2. **Load Data**: Reads production data from `data/sample_news.json`
+3. **Run Predictions**: Generates predictions for all articles
+4. **Save Results**: Saves predictions to `output/predictions/` with metadata
+   - Includes model version, provider, accuracy
+   - Timestamps for each prediction
+
+#### Example Output
+
+```
+================================================================================
+DAILY INFERENCE PIPELINE - PRODUCTION MODEL SERVING
+================================================================================
+
+Production model: champion
+Date: 2025-11-29 22:38:17
+
+[1/4] Loading champion model from Unity Catalog...
+✓ Loading champion model:
+  Version: 2
+  Provider: anthropic
+  Model: claude-sonnet-4-5-20250929
+  Accuracy: 100.00%
+
+[2/4] Loading production data...
+✓ Loaded 10 articles for inference
+
+[3/4] Running inference with champion model...
+✓ Generated 10 predictions
+
+[4/4] Saving predictions...
+✓ Saved predictions to: output/predictions/predictions_champion_20251129_223820.json
+
+================================================================================
+✅ DAILY INFERENCE COMPLETED
+================================================================================
+
+Model used: champion (v2)
+Provider: anthropic
+Model: claude-sonnet-4-5-20250929
+Articles processed: 10
+Predictions generated: 10
+
+Results saved to:
+  output/predictions/predictions_champion_20251129_223820.json
+================================================================================
+```
+
+#### Airflow Integration
+
+Integrate daily inference into your Airflow DAG:
+
+```python
+from airflow import DAG
+from airflow.providers.databricks.operators.databricks import DatabricksSubmitRunOperator
+from datetime import datetime, timedelta
+
+dag = DAG(
+    'news_classifier_production_inference',
+    schedule_interval='@daily',
+    start_date=datetime(2024, 1, 1),
+    catchup=False
+)
+
+# Daily inference with champion (production) model
+daily_inference = DatabricksSubmitRunOperator(
+    task_id='daily_inference',
+    new_cluster={
+        'spark_version': '13.3.x-scala2.12',
+        'node_type_id': 'i3.xlarge',
+        'num_workers': 0
+    },
+    notebook_task={
+        'notebook_path': '/Repos/your_repo/scripts/daily_inference',
+        'base_parameters': {}
+    },
+    dag=dag
+)
+
+# Or use MLflow project
+daily_inference_mlflow = DatabricksSubmitRunOperator(
+    task_id='daily_inference_mlflow',
+    mlflow_project_uri='.',
+    mlflow_entry_point='daily_inference',
+    dag=dag
+)
+```
+
+#### Key Features
+
+- **Production Model**: Always uses the current champion model from Unity Catalog
+- **Alias-Based Loading**: Model loaded by alias (`champion`) - automatically gets latest promoted version
+- **File-Based Output**: Predictions saved to disk with metadata and timestamps
+- **Airflow-Ready**: Designed for scheduled daily execution
+- **No Experiments**: Pure production inference, not logging to MLflow experiments
+
+**Output:** Daily production predictions with model metadata
+
+**Time:** 2-5 minutes per run
+
+---
+
+### Phase 6: Production Deployment (MLproject) 🚀
 
 **Deploy the champion model to production.**
 
