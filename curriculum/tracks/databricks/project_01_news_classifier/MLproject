@@ -20,3 +20,6 @@ entry_points:
 
   run_all:
     command: "python run_all_experiments.py"
+
+  promote_challenger:
+    command: "python scripts/promote_to_production.py"

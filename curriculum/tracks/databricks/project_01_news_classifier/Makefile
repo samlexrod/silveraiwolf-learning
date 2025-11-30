@@ -1,6 +1,6 @@
 # Makefile for News Classifier Agent MLflow Experiments
 
-.PHONY: help install activate setup test-connection notebook run-external run-internal run-both run-all compare clean clean-databricks
+.PHONY: help install activate setup test-connection notebook run-external run-internal run-both run-all promote promote-auto compare clean clean-databricks
 
 # Default target
 help:
@@ -18,6 +18,9 @@ help:
 	@echo "  make run-internal     - Run Track B (Internal Model) via MLflow"
 	@echo "  make run-both         - Run both tracks sequentially via MLflow"
 	@echo "  make run-all          - Run ALL models to determine Champion 🏆"
+	@echo ""
+	@echo "Production commands:"
+	@echo "  make promote          - Promote challenger to champion (interactive approval)"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make compare          - Compare results from both tracks"
@@ -126,6 +129,24 @@ run-all:
 	@export $(grep -v '^#' config/.env | grep -v '^$' | sed 's/#.*//' | xargs) && \
 		python run_all_experiments.py || \
 		(echo "" && echo "❌ Experiments failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
+
+# Promote Challenger to Champion (Option 3) - Interactive approval
+promote:
+	@echo "Promoting challenger to champion (interactive approval)..."
+	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
+	@echo ""
+	@export $$(grep -v '^#' config/.env | grep -v '^$$' | sed 's/#.*//' | xargs) && \
+		python scripts/promote_to_production.py || \
+		(echo "" && echo "❌ Promotion failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
+
+# Auto-approve promotion (for automated workflows like Airflow)
+promote-auto:
+	@echo "Promoting challenger to champion (auto-approve)..."
+	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
+	@echo ""
+	@export $$(grep -v '^#' config/.env | grep -v '^$$' | sed 's/#.*//' | xargs) && \
+		python scripts/promote_to_production.py --auto-approve || \
+		(echo "" && echo "❌ Promotion failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
 # Compare results
 compare:

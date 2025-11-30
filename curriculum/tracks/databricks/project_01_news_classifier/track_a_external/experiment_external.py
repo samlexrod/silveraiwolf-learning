@@ -247,8 +247,8 @@ def run_experiment(
 
                     if champion_metrics is None:
                         print("   ℹ️  No current champion - this will be the first registered model")
-                        print("   ✅ Will register to Unity Catalog as 'Champion'")
-                        model_alias = "Champion"
+                        print("   ✅ Will register to Unity Catalog as 'champion'")
+                        model_alias = "champion"
                     else:
                         champion_accuracy = champion_metrics.get('category_accuracy', 0.0)
                         new_accuracy = all_metrics.get('category_accuracy', 0.0)
@@ -257,19 +257,19 @@ def run_experiment(
                             new_accuracy, champion_accuracy
                         )
 
-                        print(f"   Current Champion: {champion_accuracy:.2%} accuracy")
+                        print(f"   Current champion: {champion_accuracy:.2%} accuracy")
                         print(f"   New Model:        {new_accuracy:.2%} accuracy")
 
                         if beats_champion:
                             print(f"   ✅ {champion_reason}")
-                            print("   ✅ Will register to Unity Catalog as 'Challenger'")
-                            print("      (Ready for A/B testing against Champion)")
-                            model_alias = "Challenger"
+                            print("   ✅ Will register to Unity Catalog as 'challenger'")
+                            print("      (Ready for A/B testing against champion)")
+                            model_alias = "challenger"
                         else:
                             print(f"   ⚠️  {champion_reason}")
-                            print("   ✅ Will register to Unity Catalog as 'Candidate'")
-                            print("      (Meets criteria but doesn't beat Champion)")
-                            model_alias = "Candidate"
+                            print("   ✅ Will register to Unity Catalog as 'candidate'")
+                            print("      (Meets criteria but doesn't beat champion)")
+                            model_alias = "candidate"
 
         # Log model using PythonModel
         print("\n[7/7] Logging model artifact...")

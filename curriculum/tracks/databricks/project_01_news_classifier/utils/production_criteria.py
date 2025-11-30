@@ -252,7 +252,7 @@ def get_champion_metrics(
     catalog: str,
     schema: str,
     model_name: str,
-    alias: str = "Champion"
+    alias: str = "champion"
 ) -> Optional[Dict[str, float]]:
     """
     Get metrics from current champion model in Unity Catalog
@@ -261,7 +261,7 @@ def get_champion_metrics(
         catalog: Unity Catalog name
         schema: Schema name
         model_name: Model name
-        alias: Alias to look up (default: Champion)
+        alias: Alias to look up (default: champion)
 
     Returns:
         Dictionary of metrics from champion model, or None if no champion exists
