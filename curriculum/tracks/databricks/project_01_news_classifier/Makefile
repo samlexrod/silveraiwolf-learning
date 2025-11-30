@@ -1,6 +1,6 @@
 # Makefile for News Classifier Agent MLflow Experiments
 
-.PHONY: help install activate setup test-connection notebook run-external run-internal run-both compare clean
+.PHONY: help install activate setup test-connection notebook run-external run-internal run-both run-all compare clean clean-databricks
 
 # Default target
 help:
@@ -17,10 +17,12 @@ help:
 	@echo "  make run-external     - Run Track A (External Model) via MLflow"
 	@echo "  make run-internal     - Run Track B (Internal Model) via MLflow"
 	@echo "  make run-both         - Run both tracks sequentially via MLflow"
+	@echo "  make run-all          - Run ALL models to determine Champion 🏆"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  make compare          - Compare results from both tracks"
 	@echo "  make clean            - Clean up temporary files"
+	@echo "  make clean-databricks - Delete ALL models and experiments from Databricks"
 	@echo ""
 	@echo "Track A Examples:"
 	@echo "  make run-external PROVIDER=openai"
@@ -116,6 +118,15 @@ run-both:
 	@mlflow run . -e main -P track=both || \
 		(echo "" && echo "❌ Experiment failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
+# Run ALL models to determine the Champion
+run-all:
+	@echo "Running all experiments via Python orchestrator..."
+	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
+	@echo ""
+	@export $(grep -v '^#' config/.env | grep -v '^$' | sed 's/#.*//' | xargs) && \
+		python run_all_experiments.py || \
+		(echo "" && echo "❌ Experiments failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
+
 # Compare results
 compare:
 	@echo "Comparing experiment results..."
@@ -133,3 +144,10 @@ clean:
 	find . -type f -name ".DS_Store" -delete 2>/dev/null || true
 	rm -rf mlruns/ mlartifacts/ 2>/dev/null || true
 	@echo "✓ Cleaned up temporary files"
+
+# Clean Databricks models and experiments (DESTRUCTIVE!)
+clean-databricks:
+	@echo "⚠️  WARNING: This will DELETE ALL registered models and experiments!"
+	@echo ""
+	@export $(grep -v '^#' config/.env | grep -v '^$' | sed 's/#.*//' | xargs) && \
+		python cleanup.py

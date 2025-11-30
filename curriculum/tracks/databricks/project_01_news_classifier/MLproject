@@ -17,3 +17,6 @@ entry_points:
     parameters:
       track: {type: string, default: "both"}
     command: "python main.py --track {track}"
+
+  run_all:
+    command: "python run_all_experiments.py"

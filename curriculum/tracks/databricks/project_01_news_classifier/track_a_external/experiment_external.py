@@ -220,38 +220,56 @@ def run_experiment(
                 print("\n✅ Model PASSES production criteria")
 
                 # Check if it beats the current champion
-                from utils.production_criteria import get_champion_metrics, evaluate_champion_criteria
+                from utils.production_criteria import (
+                    get_champion_metrics,
+                    evaluate_champion_criteria,
+                    check_duplicate_performance
+                )
                 catalog = os.getenv("UC_CATALOG", "main")
                 schema = os.getenv("UC_SCHEMA", "news_classifier")
-                model_name = f"external_{provider}_classifier"
+                # All experiments register to the same model for comparison
+                model_name = "news_classifier"
 
-                champion_metrics = get_champion_metrics(catalog, schema, model_name)
+                # First, check if identical performance already exists
+                duplicate = check_duplicate_performance(catalog, schema, model_name, all_metrics)
 
-                if champion_metrics is None:
-                    print("   ℹ️  No current champion - this will be the first registered model")
-                    print("   ✅ Will register to Unity Catalog as 'Champion'")
-                    model_alias = "Champion"
+                if duplicate:
+                    print(f"\n⚠️  Model with identical performance already exists:")
+                    print(f"   Version {duplicate['version']}: {duplicate['provider']}/{duplicate['model']}")
+                    print(f"   Accuracy: {duplicate['accuracy']:.2%}")
+                    print(f"   Alias: {duplicate['alias']}")
+                    print("   ❌ Will NOT register duplicate model to Unity Catalog")
+                    register_to_uc = False
+                    model_alias = None
                 else:
-                    champion_accuracy = champion_metrics.get('category_accuracy', 0.0)
-                    new_accuracy = all_metrics.get('category_accuracy', 0.0)
+                    # No duplicate, proceed with champion comparison
+                    champion_metrics = get_champion_metrics(catalog, schema, model_name)
 
-                    beats_champion, champion_reason = evaluate_champion_criteria(
-                        new_accuracy, champion_accuracy
-                    )
-
-                    print(f"   Current Champion: {champion_accuracy:.2%} accuracy")
-                    print(f"   New Model:        {new_accuracy:.2%} accuracy")
-
-                    if beats_champion:
-                        print(f"   ✅ {champion_reason}")
-                        print("   ✅ Will register to Unity Catalog as 'Challenger'")
-                        print("      (Ready for A/B testing against Champion)")
-                        model_alias = "Challenger"
+                    if champion_metrics is None:
+                        print("   ℹ️  No current champion - this will be the first registered model")
+                        print("   ✅ Will register to Unity Catalog as 'Champion'")
+                        model_alias = "Champion"
                     else:
-                        print(f"   ⚠️  {champion_reason}")
-                        print("   ✅ Will register to Unity Catalog as 'Candidate'")
-                        print("      (Meets criteria but doesn't beat Champion)")
-                        model_alias = "Candidate"
+                        champion_accuracy = champion_metrics.get('category_accuracy', 0.0)
+                        new_accuracy = all_metrics.get('category_accuracy', 0.0)
+
+                        beats_champion, champion_reason = evaluate_champion_criteria(
+                            new_accuracy, champion_accuracy
+                        )
+
+                        print(f"   Current Champion: {champion_accuracy:.2%} accuracy")
+                        print(f"   New Model:        {new_accuracy:.2%} accuracy")
+
+                        if beats_champion:
+                            print(f"   ✅ {champion_reason}")
+                            print("   ✅ Will register to Unity Catalog as 'Challenger'")
+                            print("      (Ready for A/B testing against Champion)")
+                            model_alias = "Challenger"
+                        else:
+                            print(f"   ⚠️  {champion_reason}")
+                            print("   ✅ Will register to Unity Catalog as 'Candidate'")
+                            print("      (Meets criteria but doesn't beat Champion)")
+                            model_alias = "Candidate"
 
         # Log model using PythonModel
         print("\n[7/7] Logging model artifact...")
@@ -337,7 +355,8 @@ def run_experiment(
             print("\nRegistering model to Unity Catalog...")
             catalog = os.getenv("UC_CATALOG", "main")
             schema = os.getenv("UC_SCHEMA", "news_classifier")
-            model_name = f"external_{provider}_classifier"
+            # All experiments register to the same model for comparison
+            model_name = "news_classifier"
 
             # Generate tags with production readiness
             tags = get_registration_tags(

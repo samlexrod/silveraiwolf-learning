@@ -3,7 +3,7 @@ Production Model Registration Criteria
 Defines validation gates for promoting models to production registry
 """
 
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 from dataclasses import dataclass
 import mlflow
 
@@ -177,6 +177,75 @@ def get_registration_tags(
     }
 
     return tags
+
+
+def check_duplicate_performance(
+    catalog: str,
+    schema: str,
+    model_name: str,
+    new_metrics: Dict[str, float],
+    tolerance: float = 0.001
+) -> Optional[Dict[str, Any]]:
+    """
+    Check if a model with identical performance already exists
+
+    Args:
+        catalog: Unity Catalog name
+        schema: Schema name
+        model_name: Model name
+        new_metrics: Metrics from the new model
+        tolerance: Tolerance for floating point comparison (default: 0.001)
+
+    Returns:
+        Dictionary with duplicate info if found, None otherwise
+        Format: {'version': str, 'alias': str, 'provider': str, 'model': str}
+    """
+    try:
+        client = mlflow.MlflowClient()
+        full_model_name = f"{catalog}.{schema}.{model_name}"
+
+        # Get all registered versions
+        versions = client.search_model_versions(f"name='{full_model_name}'")
+
+        if not versions:
+            return None
+
+        # Check each version for identical metrics
+        for v in versions:
+            # Get full version details with tags
+            version_detail = client.get_model_version(full_model_name, v.version)
+
+            # Get metrics from tags (stored during registration)
+            tags = version_detail.tags if hasattr(version_detail, 'tags') else {}
+            existing_accuracy = float(tags.get('category_accuracy', -1.0))
+            existing_f1 = float(tags.get('category_f1', -1.0))
+
+            new_accuracy = new_metrics.get('category_accuracy', 0.0)
+            new_f1 = new_metrics.get('category_f1_weighted', 0.0)
+
+            # Check if metrics match within tolerance
+            accuracy_match = abs(existing_accuracy - new_accuracy) < tolerance
+            f1_match = abs(existing_f1 - new_f1) < tolerance
+
+            if accuracy_match and f1_match:
+                # Found duplicate performance
+                aliases = version_detail.aliases if hasattr(version_detail, 'aliases') else []
+                alias_str = aliases[0] if aliases else 'None'
+
+                return {
+                    'version': version_detail.version,
+                    'alias': alias_str,
+                    'provider': tags.get('provider', 'unknown'),
+                    'model': tags.get('model', 'unknown'),
+                    'accuracy': existing_accuracy
+                }
+
+        return None
+
+    except Exception as e:
+        # Error checking for duplicates - allow registration to proceed
+        print(f"⚠️  Warning: Could not check for duplicate performance: {e}")
+        return None
 
 
 def get_champion_metrics(
