@@ -24,7 +24,27 @@ def setup_mlflow(experiment_name: str) -> str:
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "databricks"))
     mlflow.set_registry_uri(os.getenv("MLFLOW_REGISTRY_URI", "databricks-uc"))
 
-    # Create or get experiment
+    # FIX for mlflow run compatibility (GitHub issue #2735):
+    # If MLFLOW_RUN_ID is set, mlflow run already created a run - use that experiment
+    # Do NOT call set_experiment() as it will cause a mismatch
+    if os.getenv("MLFLOW_RUN_ID"):
+        active_run = mlflow.active_run()
+        if active_run:
+            experiment_id = active_run.info.experiment_id
+            experiment = mlflow.get_experiment(experiment_id)
+            print(f"✓ Using existing experiment: {experiment.name} (ID: {experiment_id})")
+            return experiment_id
+        else:
+            # Run exists but not active yet - get its experiment ID
+            run_id = os.getenv("MLFLOW_RUN_ID")
+            client = mlflow.tracking.MlflowClient()
+            run = client.get_run(run_id)
+            experiment_id = run.info.experiment_id
+            experiment = mlflow.get_experiment(experiment_id)
+            print(f"✓ Using existing experiment: {experiment.name} (ID: {experiment_id})")
+            return experiment_id
+
+    # No mlflow run context - create or get experiment normally (for direct Python execution)
     try:
         experiment = mlflow.get_experiment_by_name(experiment_name)
         if experiment is None:

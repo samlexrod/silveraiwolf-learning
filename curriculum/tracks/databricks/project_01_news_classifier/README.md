@@ -68,7 +68,7 @@ We run **identical experiments** on both tracks:
 
 **Models tested:**
 - GPT-4o-mini (OpenAI)
-- Claude 3.5 Sonnet (Anthropic)
+- Claude Sonnet 4.5 (Anthropic) - Latest as of Sept 2025
 
 ### Track B: Databricks Foundation Model Agent
 - **What**: Use Databricks-hosted Foundation Models (OpenAI, Google, Meta, Anthropic, and open models)
@@ -161,8 +161,9 @@ This project implements two parallel MLflow experiments for news classification:
 
 ### Track A: External Model Agent
 - **Provider**: OpenAI or Anthropic
-- **Models**: GPT-4o-mini, Claude 3.5 Sonnet
+- **Models**: GPT-4o-mini, Claude Sonnet 4.5
 - **Approach**: External API calls with secrets management
+- **Available Claude Models**: Sonnet 4.5, Haiku 4.5, Opus 4.5, Opus 4.1
 
 ### Track B: Databricks Foundation Model Agent
 - **Provider**: Databricks Foundation Model APIs (OpenAI OSS, Meta, Google, Anthropic)
@@ -247,6 +248,115 @@ This project uses MLflow's `MLproject` file with conda environments - **not Jupy
 - ✅ Reproducible research
 - ✅ Team collaboration
 - ✅ Automated training pipelines
+
+## Technical Implementation: MLflow Run Compatibility
+
+This project implements a fix for [MLflow GitHub Issue #2735](https://github.com/mlflow/mlflow/issues/2735) to support **both** execution methods:
+
+1. **MLflow Projects**: `mlflow run . -e track_b_internal -P model=databricks-gpt-oss-20b`
+2. **Direct Python**: `python track_b_internal/experiment_internal.py --model databricks-gpt-oss-20b`
+
+### The Problem
+
+When using `mlflow run`, MLflow creates a run and sets the `MLFLOW_RUN_ID` environment variable. If your code also calls `mlflow.set_experiment()` or `mlflow.start_run()`, it can cause conflicts:
+
+```
+MlflowException: Cannot start run with ID because active run ID
+does not match environment run ID
+```
+
+This is a known MLflow bug affecting projects that need to work with both execution methods.
+
+### The Solution
+
+We implemented a two-part fix:
+
+#### Part 1: Smart Experiment Setup ([utils/mlflow_helpers.py](utils/mlflow_helpers.py))
+
+```python
+def setup_mlflow(experiment_name: str) -> str:
+    """Setup MLflow experiment - compatible with both mlflow run and direct execution"""
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "databricks"))
+    mlflow.set_registry_uri(os.getenv("MLFLOW_REGISTRY_URI", "databricks-uc"))
+
+    # FIX for mlflow run compatibility (GitHub issue #2735):
+    # If MLFLOW_RUN_ID is set, mlflow run already created a run
+    # Do NOT call set_experiment() as it will cause a mismatch
+    if os.getenv("MLFLOW_RUN_ID"):
+        # Use the existing run's experiment
+        run_id = os.getenv("MLFLOW_RUN_ID")
+        client = mlflow.tracking.MlflowClient()
+        run = client.get_run(run_id)
+        experiment_id = run.info.experiment_id
+        experiment = mlflow.get_experiment(experiment_id)
+        print(f"✓ Using existing experiment: {experiment.name} (ID: {experiment_id})")
+        return experiment_id
+
+    # No mlflow run context - create or get experiment normally
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    if experiment is None:
+        experiment_id = mlflow.create_experiment(experiment_name)
+    else:
+        experiment_id = experiment.experiment_id
+
+    mlflow.set_experiment(experiment_name)
+    return experiment_id
+```
+
+**Key Insight**: When `MLFLOW_RUN_ID` environment variable is set, we skip calling `set_experiment()` and use the existing run's experiment instead.
+
+#### Part 2: Smart Run Management (Experiment Scripts)
+
+```python
+# Check if mlflow run already created a run
+if os.getenv("MLFLOW_RUN_ID"):
+    # mlflow run context - use existing run
+    created_run = False
+    if not mlflow.active_run():
+        # Activate the run that mlflow run created
+        mlflow.start_run(run_id=os.getenv("MLFLOW_RUN_ID"))
+    print(f"Using existing MLflow run: {mlflow.active_run().info.run_id}")
+else:
+    # Direct Python execution - create our own run
+    mlflow.start_run(run_name=f"internal_{model}_{timestamp}")
+    created_run = True
+    print(f"Started MLflow run: {mlflow.active_run().info.run_id}")
+
+try:
+    # ... experiment code ...
+finally:
+    # Only end run if we created it (not if mlflow run created it)
+    if created_run:
+        mlflow.end_run()
+```
+
+**Key Insight**: Detect the execution context using `MLFLOW_RUN_ID` environment variable. When present, activate the existing run instead of creating a new one.
+
+### Why This Matters
+
+✅ **Flexibility** - Run experiments any way you want
+✅ **Local Development** - Use direct Python for debugging
+✅ **Production Deployment** - Use `mlflow run` for reproducibility
+✅ **CI/CD Integration** - Both methods work in automated pipelines
+✅ **Team Collaboration** - Developers can choose their preferred method
+
+### Testing the Fix
+
+Both methods produce identical results:
+
+```bash
+# Method 1: MLflow Projects (recommended for production)
+mlflow run . -e track_b_internal -P model=databricks-gpt-oss-20b
+
+# Method 2: Direct Python (useful for debugging)
+python track_b_internal/experiment_internal.py --model databricks-gpt-oss-20b
+```
+
+Both will:
+- Log to the same MLflow experiment
+- Track metrics identically
+- Register models to Unity Catalog with the same logic
+- Follow Champion/Challenger/Candidate lifecycle
 
 ## Setup
 
@@ -452,7 +562,9 @@ conda activate news-classifier-agent
 # See "Setup" section below
 ```
 
-### Using Make (Recommended)
+### Using Make (Recommended - Uses MLflow Projects)
+
+The Makefile commands use `mlflow run` under the hood for reproducibility:
 
 ```bash
 # Track A: External Models (OpenAI/Anthropic)
@@ -473,7 +585,28 @@ make run-internal MODEL=databricks-qwen3-next-80b-a3b-instruct   # Qwen3 Next 80
 make run-both
 ```
 
-### Using Python Directly
+### Using MLflow Projects Directly
+
+Run experiments using MLflow's project specification:
+
+```bash
+# Activate conda environment first
+conda activate news-classifier-agent
+
+# Track A: External Models
+mlflow run . -e track_a_external -P provider=openai
+mlflow run . -e track_a_external -P provider=anthropic
+
+# Track B: Databricks Foundation Models
+mlflow run . -e track_b_internal -P model=databricks-gpt-oss-20b
+mlflow run . -e track_b_internal -P model=databricks-meta-llama-3-3-70b-instruct
+mlflow run . -e track_b_internal -P model=databricks-meta-llama-3-1-405b-instruct
+
+# Run both tracks
+mlflow run . -e main -P track=both
+```
+
+### Using Python Directly (Alternative Method)
 
 ```bash
 # Activate conda environment first
@@ -512,7 +645,15 @@ python track_b_internal/experiment_internal.py --model databricks-gpt-5.1 --no-r
 
 **Track A - External Models:**
 - `openai` → GPT-4o-mini (default)
-- `anthropic` → Claude 3.5 Sonnet
+- `anthropic` → Claude Sonnet 4.5 (default, latest as of Sept 2025)
+
+**Available Anthropic Claude Models (via Anthropic API):**
+- **Claude Sonnet 4.5**: `claude-sonnet-4-5-20250929` - Most balanced, recommended (default)
+- **Claude Haiku 4.5**: `claude-haiku-4-5-20251001` - Fastest, lowest cost
+- **Claude Opus 4.5**: `claude-opus-4-5-20251101` - Maximum intelligence
+- **Claude Opus 4.1**: `claude-opus-4-1-20250805` - Specialized reasoning
+
+> 📝 **Note**: Track A uses the Anthropic API directly (external), not Databricks Foundation Model API
 
 **Track B - Databricks Foundation Models:**
 
@@ -535,21 +676,31 @@ python track_b_internal/experiment_internal.py --model databricks-gpt-5.1 --no-r
 > make list-models  # Lists available Foundation Model endpoints
 > ```
 
-### Why NOT `mlflow run`?
+### Using MLflow Run (Alternative)
 
-❌ **`mlflow run .` is NOT supported** because it creates MLflow run context conflicts.
+✅ **`mlflow run .` IS supported** - The experiments automatically detect and use existing runs.
 
-**The Problem:**
 ```bash
-mlflow run . -e track_b_internal  # Creates outer MLflow run
-  → experiment_internal.py calls mlflow.start_run()  # Creates inner MLflow run
-  → ❌ CONFLICT: "active run ID does not match environment run ID"
+# Activate conda environment first
+conda activate news-classifier-agent
+
+# Run Track A (External Model)
+mlflow run . -e track_a_external -P provider=openai
+mlflow run . -e track_a_external -P provider=anthropic
+
+# Run Track B (Internal Model)
+mlflow run . -e track_b_internal -P model=databricks-gpt-oss-20b
+mlflow run . -e track_b_internal -P model=databricks-meta-llama-3-3-70b-instruct
+
+# Run both tracks
+mlflow run . -e main -P track=both
 ```
 
-**The Solution:**
-Use `make` commands or run Python scripts directly - both give you full control over the MLflow run lifecycle.
-
-See [Why `mlflow run` Doesn't Work](#mlflow-run-explanation) for technical details.
+**How it works:**
+- Scripts check for active runs using `mlflow.active_run()`
+- If `mlflow run` created a run → uses it
+- If no active run → creates its own (for direct Python execution)
+- Both approaches work seamlessly!
 
 ## What Gets Logged to MLflow
 
@@ -956,50 +1107,56 @@ promote_model_to_production(run_id="abc123", criteria=strict_criteria)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## MLflow Run Context Conflicts Explained {#mlflow-run-explanation}
+## How MLflow Run Support Works {#mlflow-run-explanation}
 
-### Why `mlflow run` Doesn't Work with This Project
+### Automatic Run Detection
 
-When you use `mlflow run .`, MLflow follows these steps:
+This project supports **BOTH** `mlflow run` and direct Python execution through automatic run detection:
 
-1. **MLflow creates a parent run** with ID `abc123`
-2. **Sets environment variable** `MLFLOW_RUN_ID=abc123`
-3. **Launches your script** `experiment_internal.py`
-4. **Your script calls** `mlflow.start_run()` → Creates NEW run with ID `xyz789`
-5. **MLflow detects conflict**: Parent run `abc123` ≠ Child run `xyz789`
-6. **ERROR**: `MlflowException: Cannot start run with ID abc123 because active run ID does not match environment run ID`
+```python
+# Check if mlflow run already created a run for us
+active_run = mlflow.active_run()
+created_run = False
+
+if active_run:
+    # Use existing run from `mlflow run`
+    run = active_run
+    print(f"Using existing MLflow run: {run.info.run_id}")
+else:
+    # Create our own run (for direct Python execution)
+    run = mlflow.start_run(run_name=f"internal_{model}_{timestamp}")
+    created_run = True
+    print(f"Started MLflow run: {run.info.run_id}")
+
+try:
+    # ... experiment code ...
+finally:
+    # Only end run if we created it
+    if created_run:
+        mlflow.end_run()
+```
 
 ### The Two Approaches
 
-**Approach 1: Direct Python Execution (What We Use)**
+**Approach 1: Direct Python Execution**
 ```bash
 # You control the entire run lifecycle
-python track_b_internal/experiment_internal.py --model databricks-gpt-5.1
+python track_b_internal/experiment_internal.py --model databricks-gpt-oss-20b
 
-# Script creates ONE run with custom name
-mlflow.start_run(run_name="internal_gpt-5.1_20251129_143329")
+# ✅ Script creates run with custom name
+# ✅ Full control over run naming
+# ✅ Better for learning/debugging
 ```
 
-✅ **Benefits:**
-- Full control over run naming
-- No environment variable conflicts
-- Clear error messages
-- Better for learning/debugging
-
-**Approach 2: MLflow Run (Would Require Refactoring)**
+**Approach 2: MLflow Run**
 ```bash
 # MLflow controls the run lifecycle
-mlflow run . -e track_b_internal -P model=databricks-gpt-5.1
+mlflow run . -e track_b_internal -P model=databricks-gpt-oss-20b
 
-# Script must NOT call start_run(), just log to existing run
-# mlflow.log_param(...)  # Uses run created by mlflow run
-# mlflow.log_metric(...)
+# ✅ Script detects and uses MLflow's run
+# ✅ Better for packaged/remote projects
+# ✅ Standard MLflow workflow
 ```
-
-⚠️ **Trade-offs:**
-- MLflow controls run names
-- Better for packaged/remote projects
-- More abstraction = harder to debug
 
 ### When to Use Each
 
@@ -1008,9 +1165,9 @@ mlflow run . -e track_b_internal -P model=databricks-gpt-5.1
 | Running remote git repos | Local development |
 | Deploying packaged projects | Learning/debugging |
 | CI/CD pipelines | Custom run naming |
-| Team standardization | Full control needed |
+| Team standardization | Quick iteration |
 
-**For this learning project:** Direct Python execution is better because you see exactly what's happening!
+**Both work perfectly!** Choose based on your workflow preference.
 
 ## What You'll Learn
 

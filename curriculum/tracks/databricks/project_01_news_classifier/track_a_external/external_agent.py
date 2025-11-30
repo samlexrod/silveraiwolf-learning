@@ -44,7 +44,7 @@ class ExternalNewsClassifierAgent:
 
         # Set default models
         if model is None:
-            self.model = "gpt-4o-mini" if provider == "openai" else "claude-3-5-sonnet-20241022"
+            self.model = "gpt-4o-mini" if provider == "openai" else "claude-sonnet-4-5-20250929"
         else:
             self.model = model
 

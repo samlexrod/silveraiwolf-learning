@@ -94,10 +94,23 @@ def run_experiment(
     news_articles = load_sample_data(data_path)
     print(f"✓ Loaded {len(news_articles)} articles")
 
-    # Start MLflow run
+    # Start MLflow run (or use existing run from `mlflow run`)
     print("\n[5/7] Running classification and logging to MLflow...")
-    run = mlflow.start_run(run_name=f"internal_{model.replace('databricks-', '')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-    print(f"Started MLflow run: {run.info.run_id}")
+
+    # BEST PRACTICE: Check if mlflow run already created a run (GitHub issue #2735)
+    # When MLFLOW_RUN_ID is set, mlflow run already created the run - don't call start_run()
+    if os.getenv("MLFLOW_RUN_ID"):
+        # mlflow run already created a run - just use it
+        created_run = False
+        if not mlflow.active_run():
+            # Activate the run that mlflow run created
+            mlflow.start_run(run_id=os.getenv("MLFLOW_RUN_ID"))
+        print(f"Using existing MLflow run: {mlflow.active_run().info.run_id}")
+    else:
+        # Direct Python execution - create our own run
+        mlflow.start_run(run_name=f"internal_{model.replace('databricks-', '')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        created_run = True
+        print(f"Started MLflow run: {mlflow.active_run().info.run_id}")
 
     try:
 
@@ -290,7 +303,7 @@ def run_experiment(
             ]
         )
 
-        run_id = run.info.run_id
+        run_id = mlflow.active_run().info.run_id
         print(f"✓ MLflow Run ID: {run_id}")
 
         # Register to Unity Catalog
@@ -355,8 +368,9 @@ def run_experiment(
                 print(f"⚠ Could not register to UC (may need permissions): {e}")
 
     finally:
-        # End the run
-        mlflow.end_run()
+        # Only end the run if we created it (not if mlflow run created it)
+        if created_run:
+            mlflow.end_run()
 
     print("\n✓ Experiment complete!")
     print(f"View results: {os.getenv('DATABRICKS_HOST')}/ml/experiments/{experiment_id}")

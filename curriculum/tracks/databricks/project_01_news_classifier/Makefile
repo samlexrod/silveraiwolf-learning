@@ -83,30 +83,37 @@ notebook:
 	@jupyter lab --notebook-dir=notebooks || \
 		(echo "" && echo "❌ JupyterLab failed to start. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
-# Run Track A (External Model) - runs Python script directly
+# Run Track A (External Model) - uses mlflow run
 PROVIDER ?= openai
 run-external:
-	@echo "Running Track A: External Model ($(PROVIDER))..."
+	@echo "Running Track A: External Model ($(PROVIDER)) via MLflow..."
 	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
 	@echo ""
-	@python track_a_external/experiment_external.py --provider $(PROVIDER) || \
+	@export $$(grep -v '^#' config/.env | grep -v '^$$' | sed 's/#.*//' | xargs) && \
+		EXPERIMENT_NAME=$${MLFLOW_EXPERIMENT_NAME_EXTERNAL:-/Users/default/news-classifier-external} && \
+		RUN_NAME="external_$(PROVIDER)_$$(date +%Y%m%d_%H%M%S)" && \
+		mlflow run . -e track_a_external -P provider=$(PROVIDER) --experiment-name "$$EXPERIMENT_NAME" --run-name "$$RUN_NAME" || \
 		(echo "" && echo "❌ Experiment failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
-# Run Track B (Internal Model) - runs Python script directly
+# Run Track B (Internal Model) - uses mlflow run
 MODEL ?= databricks-gpt-oss-20b
 run-internal:
-	@echo "Running Track B: Internal Model ($(MODEL))..."
+	@echo "Running Track B: Internal Model ($(MODEL)) via MLflow..."
 	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
 	@echo ""
-	@python track_b_internal/experiment_internal.py --model $(MODEL) || \
+	@export $$(grep -v '^#' config/.env | grep -v '^$$' | sed 's/#.*//' | xargs) && \
+		EXPERIMENT_NAME=$${MLFLOW_EXPERIMENT_NAME_INTERNAL:-/Users/default/news-classifier-internal} && \
+		MODEL_SHORT=$$(echo $(MODEL) | sed 's/databricks-//') && \
+		RUN_NAME="internal_$${MODEL_SHORT}_$$(date +%Y%m%d_%H%M%S)" && \
+		mlflow run . -e track_b_internal -P model=$(MODEL) --experiment-name "$$EXPERIMENT_NAME" --run-name "$$RUN_NAME" || \
 		(echo "" && echo "❌ Experiment failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
-# Run both tracks sequentially
+# Run both tracks sequentially - uses mlflow run
 run-both:
-	@echo "Running BOTH tracks sequentially..."
+	@echo "Running BOTH tracks sequentially via MLflow..."
 	@echo "⚠️  Note: This requires 'conda activate news-classifier-agent' first"
 	@echo ""
-	@python main.py --track both || \
+	@mlflow run . -e main -P track=both || \
 		(echo "" && echo "❌ Experiment failed. Did you activate the environment?" && echo "   Run: conda activate news-classifier-agent" && exit 1)
 
 # Compare results
