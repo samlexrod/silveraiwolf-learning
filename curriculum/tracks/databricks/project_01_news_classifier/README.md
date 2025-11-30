@@ -507,27 +507,30 @@ make run-internal MODEL=databricks-gpt-oss-20b
 
 ---
 
-### Phase 3: Analysis (Optional Notebook) 📊
+### Phase 3: Review Models in Databricks UI 📊
 
-**Create a notebook to analyze MLflow results.**
+**Review registered models and their aliases before promotion.**
 
-```python
-# notebooks/02_analyze_results.ipynb
+After running experiments, review the results in Databricks:
 
-import mlflow
-mlflow.set_tracking_uri("databricks")
-
-# Load experiment results
-runs = mlflow.search_runs(experiment_ids=['...'])
-
-# Compare Track A vs Track B
-# - Accuracy by category
-# - Cost per prediction
-# - Latency analysis
-# - Visualizations
+```bash
+# Navigate to Databricks UI
+# 1. Go to: Machine Learning → Models
+# 2. Find: main.news_classifier.news_classifier
+# 3. Review model versions and their aliases:
+#    - champion: Current production model
+#    - challenger: Waiting for promotion (beats champion by ≥2%)
+#    - candidate: Meets criteria but doesn't beat champion
+#    - defeated: Previous champion that was replaced
 ```
 
-**Output:** Data-driven decision on which model to use
+**What to check:**
+- Compare accuracy between champion and challenger
+- Review F1 score, precision, recall metrics
+- Check which provider/model each version uses
+- Verify performance improvement justifies replacement
+
+**Output:** Understanding of which models are ready for promotion
 
 ---
 
@@ -956,11 +959,13 @@ print(result)  # {"category": "World News", "sentiment": "Neutral", ...}
 - Check you have `CREATE MODEL` permissions on the schema
 - Use `--no-register` flag to skip registration during testing
 
-## Production Model Promotion
+## Production Model Lifecycle
 
-This project implements **3 production-grade approaches** for promoting models from experiments to production. Learn all three patterns used in real ML engineering teams:
+This project implements a **2-phase production lifecycle** for models:
 
 ### Production Criteria
+
+All models must meet minimum criteria before registration:
 
 Before any model reaches production, it must pass validation gates defined in [utils/production_criteria.py](utils/production_criteria.py):
 
@@ -972,11 +977,17 @@ Before any model reaches production, it must pass validation gates defined in [u
 | **Recall** | ≥ 0.80 | Low false negative rate |
 | **Beats Champion** | +2% accuracy | Must improve on current production |
 
-### Option 1: Manual Approval Gate
+---
 
-**Use case:** Human-in-the-loop validation for critical production systems
+## Phase 1: Registration (Creating Challenger/Candidate)
 
-After experiment completes, require manual approval before Unity Catalog registration:
+**Two options for gating whether models get registered as champion/challenger/candidate:**
+
+### Registration Option 1: Manual Approval Gate
+
+**Use case:** Critical systems - human approves each registration
+
+After experiment completes, require manual approval before registering to Unity Catalog:
 
 ```bash
 # Run with manual approval gate
@@ -988,8 +999,9 @@ python track_b_internal/experiment_internal.py \
 **What happens:**
 1. Experiment runs and logs metrics
 2. System evaluates production criteria
-3. **Prompts for manual approval**: `Register to Unity Catalog? (yes/no):`
-4. Only registers if you type `yes`
+3. Determines alias (champion/challenger/candidate) based on performance
+4. **Prompts for manual approval**: `Register to Unity Catalog? (yes/no):`
+5. Only registers with determined alias if you type `yes`
 
 **Example output:**
 ```
@@ -1016,11 +1028,11 @@ MANUAL APPROVAL REQUIRED
 🤔 Register to Unity Catalog? (yes/no): yes
 ```
 
-### Option 2: Automated Gating with Tags
+### Registration Option 2: Automated Gating (DEFAULT)
 
-**Use case:** Fast iteration with automatic safety checks (Default behavior)
+**Use case:** Fast iteration - automatically registers as champion/challenger/candidate
 
-Models are automatically registered with tags indicating production readiness:
+Models are automatically registered with appropriate alias based on performance:
 
 ```bash
 # Run with automated gating (default)
@@ -1031,8 +1043,9 @@ python track_b_internal/experiment_internal.py \
 **What happens:**
 1. Experiment runs and logs metrics
 2. System evaluates production criteria
-3. **Always registers** to Unity Catalog
-4. Tags model with `production_ready=true` or `production_ready=false`
+3. Determines alias (champion/challenger/candidate) based on performance
+4. **Always registers** to Unity Catalog with determined alias
+5. Tags model with `production_ready=true` or `production_ready=false`
 
 **Model tags in Unity Catalog:**
 ```python
@@ -1063,11 +1076,13 @@ for model in models:
     print(f"✅ {model.name} - Ready for production")
 ```
 
-### Option 3: Challenger Promotion Workflow
+---
 
-**Use case:** Post-experiment champion replacement with human-in-the-loop approval
+## Phase 2: Promotion (Replacing Champion)
 
-Promote challenger to champion after manual review:
+**Human-in-the-loop approval for promoting challenger → champion**
+
+After a challenger has been registered (via Phase 1), promote it to champion with manual approval:
 
 ```bash
 # Promote challenger to champion (interactive approval)
@@ -1175,13 +1190,20 @@ challenger_model = mlflow.pyfunc.load_model(f"models:/{model_name}@challenger")
 candidate_model = mlflow.pyfunc.load_model(f"models:/{model_name}@candidate")
 ```
 
-### Comparison: When to Use Each Option
+---
 
-| Approach | Use Case | Automation | Safety | Speed |
-|----------|----------|------------|--------|-------|
-| **Option 1: Manual Gate** | Critical systems, per-experiment approval | ❌ Manual (at registration) | 🔒 Highest | 🐌 Slowest |
-| **Option 2: Auto Tags** | Fast iteration, experimentation | ✅ Full automation | ⚠️ Medium | ⚡ Fastest |
-| **Option 3: Challenger Promotion** | Production champion replacement | 🔄 Human-in-the-loop | 🔒 High | 🚶 Medium |
+### Summary: 2-Phase Production Lifecycle
+
+| Phase | Options | When to Use | Automation | Safety |
+|-------|---------|-------------|------------|--------|
+| **Phase 1: REGISTRATION** | **Option 1: Manual Gate**<br>`--require-approval` | Critical systems - approve each registration | ❌ Manual approval | 🔒 Highest |
+| **Phase 1: REGISTRATION** | **Option 2: Automated** (DEFAULT)<br>`make run-all` | Fast iteration - automatic registration | ✅ Full automation | ⚠️ Medium |
+| **Phase 2: PROMOTION** | **Human-in-the-loop**<br>`make promote` | Replace champion with approved challenger | 🔄 Interactive approval | 🔒 High |
+
+**Key Points:**
+- **Phase 1** has 2 options for gating challenger/candidate REGISTRATION
+- **Phase 2** has 1 process for promoting challenger → champion
+- Most teams use **Option 2** (automated) + **Phase 2** (manual promotion)
 
 ### Duplicate Performance Detection
 
