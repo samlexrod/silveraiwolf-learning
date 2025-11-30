@@ -22,8 +22,11 @@ cp config/.env.example config/.env
 jupyter lab
 # Open: notebooks/01_eda_news_classifier.ipynb
 
-# Run experiments
-make run-both
+# Run all experiments to determine champion
+make run-all
+
+# Promote challenger to champion (after review)
+make promote
 ```
 
 ## Experimental Strategy
@@ -477,17 +480,18 @@ jupyter lab
 **Run formal experiments with automatic MLflow tracking.**
 
 ```bash
-# Run Track A (External - OpenAI)
+# Run all experiments to determine champion/challenger
+make run-all
+
+# Or run individual tracks:
+# Track A (External - OpenAI)
 make run-external PROVIDER=openai
 
-# Run Track A (External - Anthropic)
+# Track A (External - Anthropic)
 make run-external PROVIDER=anthropic
 
-# Run Track B (Internal - DBRX)
-make run-internal MODEL=databricks-dbrx-instruct
-
-# Or run both tracks at once
-make run-both
+# Track B (Internal - specific model)
+make run-internal MODEL=databricks-gpt-oss-20b
 ```
 
 **What happens:**
@@ -695,8 +699,11 @@ make run-internal MODEL=databricks-meta-llama-3-1-405b-instruct  # Meta Llama 3.
 make run-internal MODEL=databricks-gemma-3-12b                   # Google Gemma 3 12B
 make run-internal MODEL=databricks-qwen3-next-80b-a3b-instruct   # Qwen3 Next 80B
 
-# Run BOTH tracks for comparison
-make run-both
+# Run ALL experiments to determine champion/challenger
+make run-all
+
+# Promote challenger to champion (after review)
+make promote
 ```
 
 ### Using MLflow Projects Directly
