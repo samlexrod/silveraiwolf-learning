@@ -527,9 +527,123 @@ runs = mlflow.search_runs(experiment_ids=['...'])
 
 ---
 
-### Phase 4: Production (MLproject) 🚀
+### Phase 4: Champion Promotion (Human-in-the-Loop) 🏆
 
-**Deploy the winning model to production.**
+**Promote challenger to champion after manual review.**
+
+After running experiments, you may have a **challenger** waiting for promotion to **champion**. Use the standalone promotion workflow to review and approve:
+
+```bash
+# Review challenger and promote to champion (with approval prompt)
+make promote
+
+# What happens:
+# 1. Checks if challenger exists (waiting for review)
+# 2. Shows side-by-side comparison with current champion
+# 3. Prompts: "Proceed? (yes/no):"
+# 4. If approved:
+#    - Current champion → defeated
+#    - Challenger → champion
+#    - Challenger alias removed
+```
+
+**Example workflow:**
+
+```bash
+# Step 1: Run experiments to create challenger
+make run-all
+
+# Step 2: Review results in Databricks UI
+# Navigate to: Machine Learning → Models → main.news_classifier.news_classifier
+
+# Step 3: Promote challenger to champion
+make promote
+
+# Output:
+# ================================================================================
+# [1/5] Checking for challenger waiting for review...
+# ✓ Challenger found: Version 2
+#   Provider: anthropic
+#   Model: claude-sonnet-4-5-20250929
+#   Accuracy: 100.00%
+#
+# [2/5] Checking current champion...
+# ✓ Champion found: Version 1
+#   Provider: openai
+#   Model: gpt-4o-mini
+#   Accuracy: 90.00%
+#
+# [3/5] Performance Comparison...
+# Metric                   Current Champion           Challenger     Improvement
+# --------------------------------------------------------------------------------
+# Accuracy                          90.00%             100.00%         10.00%
+#
+# [4/5] Approval Gate...
+# 🤔 Promote challenger to champion?
+#    • Current champion (v1) will be demoted to 'defeated'
+#    • Challenger (v2) will become new champion
+#
+# Proceed? (yes/no): yes
+#
+# [5/5] Executing promotion...
+#    ✓ Version 1 is now defeated
+#    ✓ Version 2 is now champion
+#    ✓ Removed 'challenger' alias
+# ================================================================================
+```
+
+**Champion Lifecycle:**
+
+```
+New Model → Passes Criteria → Beats Champion by ≥2%
+                                      ↓
+                                 challenger (waiting for review)
+                                      ↓
+                               [make promote]
+                            [human approval: yes]
+                                      ↓
+                   ┌──────────────────┴──────────────────┐
+                   ↓                                     ↓
+            Old champion → defeated              challenger → champion
+                                                  (challenger alias removed)
+```
+
+**Orchestration with Airflow:**
+
+Use the MLflow entry point for workflow orchestration:
+
+```python
+# Airflow DAG example with human-in-the-loop
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.sensors.external_task import ExternalTaskSensor
+
+with DAG('news_classifier_promotion', ...) as dag:
+
+    # Task 1: Run experiments
+    run_experiments = BashOperator(
+        task_id='run_experiments',
+        bash_command='cd /path/to/project && make run-all'
+    )
+
+    # Task 2: Promote challenger (human approval via Airflow UI)
+    promote_champion = BashOperator(
+        task_id='promote_champion',
+        bash_command='cd /path/to/project && make promote'
+    )
+
+    run_experiments >> promote_champion
+```
+
+**Output:** Champion model promoted to production after human review
+
+**Time:** 2-5 minutes for review and approval
+
+---
+
+### Phase 5: Production Deployment (MLproject) 🚀
+
+**Deploy the champion model to production.**
 
 ```bash
 # Deploy as Databricks Job
@@ -942,128 +1056,142 @@ for model in models:
     print(f"✅ {model.name} - Ready for production")
 ```
 
-### Option 3: Standalone Promotion Script
+### Option 3: Challenger Promotion Workflow
 
-**Use case:** Post-experiment promotion with champion comparison (Netflix/Uber pattern)
+**Use case:** Post-experiment champion replacement with human-in-the-loop approval
 
-Promote a specific experiment run after manual review:
+Promote challenger to champion after manual review:
 
 ```bash
-# List candidate models
-python scripts/promote_to_production.py --list-candidates
+# Promote challenger to champion (interactive approval)
+make promote
 
-# Promote a specific run
-python scripts/promote_to_production.py --run-id abc123def456
-
-# Force promotion (override criteria)
-python scripts/promote_to_production.py --run-id abc123def456 --force
-
-# Promote to Staging (not production)
-python scripts/promote_to_production.py --run-id abc123def456 --alias Staging
+# What happens:
+# 1. Checks if challenger exists (waiting for review)
+# 2. Shows side-by-side comparison with current champion
+# 3. Prompts: "Proceed? (yes/no):"
+# 4. If approved:
+#    - Current champion → defeated
+#    - Challenger → champion
+#    - Challenger alias removed
 ```
 
-**Validation gates:**
-1. ✅ **Performance criteria** - Must meet minimum thresholds
-2. ✅ **Champion comparison** - Must beat current production model by ≥2%
-3. ✅ **Manual override** - Use `--force` to bypass gates
+**Champion Lifecycle:**
+1. ✅ **First model** - Automatically becomes champion
+2. ✅ **Better model** - Becomes challenger if beats champion by ≥2%
+3. ✅ **Manual promotion** - Human approves challenger → champion
+4. ✅ **Previous champion** - Demoted to defeated
 
 **Example workflow:**
 ```bash
-# Step 1: Run experiments
-python track_b_internal/experiment_internal.py --model databricks-gpt-5-1 --no-register
+# Step 1: Run experiments to create challenger
+make run-all
 
 # Step 2: Review results in Databricks UI
-# Navigate to: Machine Learning → Experiments → news-classifier-internal
+# Navigate to: Machine Learning → Models → main.news_classifier.news_classifier
 
-# Step 3: List candidates
-python scripts/promote_to_production.py --list-candidates
-
-# Output:
-# Found 3 candidate(s):
-#
-# 1. Run ID: abc123
-#    Name: internal_gpt-5-1_20251129_143022
-#    Accuracy: 94.00%
-#    F1 Score: 0.912
-#
-# 2. Run ID: def456
-#    Name: internal_gpt-oss-120b_20251129_142015
-#    Accuracy: 91.00%
-#    F1 Score: 0.887
-
-# Step 4: Promote best model
-python scripts/promote_to_production.py --run-id abc123
+# Step 3: Promote challenger to champion
+make promote
 
 # Output:
-# [1/5] Loading run details...
-# ✓ Run Name: internal_gpt-5-1_20251129_143022
+# ================================================================================
+# [1/5] Checking for challenger waiting for review...
+# ✓ Challenger found: Version 2
+#   Provider: anthropic
+#   Model: claude-sonnet-4-5-20250929
+#   Accuracy: 100.00%
+#   F1 Score: 1.000
 #
-# [2/5] Validating performance criteria...
-# ✅ PASSES PRODUCTION CRITERIA
+# [2/5] Checking current champion...
+# ✓ Champion found: Version 1
+#   Provider: openai
+#   Model: gpt-4o-mini
+#   Accuracy: 90.00%
+#   F1 Score: 0.860
 #
-# [3/5] Extracting model information...
-# ✓ Model Name: main.news_classifier.internal_gpt-5-1_classifier
+# [3/5] Performance Comparison...
+# Metric                   Current Champion           Challenger     Improvement
+# --------------------------------------------------------------------------------
+# Accuracy                          90.00%             100.00%         10.00%
+# F1 Score                            0.860                1.000
 #
-# [4/5] Checking against current champion...
-# ✓ New model beats current Champion by 2.50%
+# [4/5] Approval Gate...
+# 🤔 Promote challenger to champion?
+#    • Current champion (v1) will be demoted to 'defeated'
+#    • Challenger (v2) will become new champion
 #
-# [5/5] Promoting model to production...
-# ✓ Registered as version: 3
-# ✓ Set alias 'Champion' to version 3
+# Proceed? (yes/no): yes
+#
+# [5/5] Executing promotion...
+#    • Demoting champion v1 → defeated...
+#    ✓ Version 1 is now defeated
+#    • Promoting challenger v2 → champion...
+#    ✓ Version 2 is now champion
+#    ✓ Removed 'challenger' alias
 #
 # ✅ PROMOTION SUCCESSFUL
-# Model: main.news_classifier.internal_gpt-5-1_classifier
-# Version: 3
-# Alias: Champion
+# 🏆 New Champion: Version 2
+#    Provider: anthropic
+#    Model: claude-sonnet-4-5-20250929
+#    Accuracy: 100.00%
+#    F1 Score: 1.000
 #
-# To load in production:
-#   model = mlflow.pyfunc.load_model('models:/main.news_classifier.internal_gpt-5-1_classifier@Champion')
+# ⚔️  Defeated: Version 1
+#    Provider: openai
+#    Model: gpt-4o-mini
+#    Accuracy: 90.00%
+#
+# To load new champion in production:
+#   model = mlflow.pyfunc.load_model('models:/main.news_classifier.news_classifier@champion')
+# ================================================================================
 ```
 
 ### Unity Catalog Aliases
 
-Models use aliases to indicate production stages:
+Models use lowercase aliases to indicate production stages:
 
 ```python
 from mlflow.tracking import MlflowClient
 
 client = MlflowClient()
-model_name = "main.news_classifier.internal_gpt-5-1_classifier"
+model_name = "main.news_classifier.news_classifier"
 
-# Set production stages
-client.set_registered_model_alias(model_name, "Candidate", version=1)  # Testing
-client.set_registered_model_alias(model_name, "Staging", version=2)    # Pre-prod
-client.set_registered_model_alias(model_name, "Champion", version=3)   # Production
+# Production lifecycle aliases (automatically assigned)
+# - champion: Current production model
+# - challenger: Candidate for replacing champion (beats by ≥2%)
+# - candidate: Meets criteria but doesn't beat champion
+# - defeated: Previous champion that was replaced
 
 # Load specific stage
-champion_model = mlflow.pyfunc.load_model(f"models:/{model_name}@Champion")
-staging_model = mlflow.pyfunc.load_model(f"models:/{model_name}@Staging")
+champion_model = mlflow.pyfunc.load_model(f"models:/{model_name}@champion")
+challenger_model = mlflow.pyfunc.load_model(f"models:/{model_name}@challenger")
+candidate_model = mlflow.pyfunc.load_model(f"models:/{model_name}@candidate")
 ```
 
 ### Comparison: When to Use Each Option
 
 | Approach | Use Case | Automation | Safety | Speed |
 |----------|----------|------------|--------|-------|
-| **Option 1: Manual Gate** | Critical systems, regulatory compliance | ❌ Manual | 🔒 Highest | 🐌 Slowest |
-| **Option 2: Auto Tags** | Fast iteration, experimentation | ✅ Full | ⚠️ Medium | ⚡ Fastest |
-| **Option 3: Standalone** | Production workflows, champion tracking | ⚙️ Semi-auto | 🔒 High | 🚶 Medium |
+| **Option 1: Manual Gate** | Critical systems, per-experiment approval | ❌ Manual (at registration) | 🔒 Highest | 🐌 Slowest |
+| **Option 2: Auto Tags** | Fast iteration, experimentation | ✅ Full automation | ⚠️ Medium | ⚡ Fastest |
+| **Option 3: Challenger Promotion** | Production champion replacement | 🔄 Human-in-the-loop | 🔒 High | 🚶 Medium |
 
-### Custom Criteria
+### Duplicate Performance Detection
 
-Override default production criteria by editing [utils/production_criteria.py](utils/production_criteria.py):
+**NEW FEATURE**: The system automatically prevents registering models with identical performance:
 
-```python
-from utils.production_criteria import ProductionCriteria
+- Before registration, checks if any existing model version has the same accuracy and F1 score (within 0.001 tolerance)
+- If duplicate found, skips registration and displays which version already has that performance
+- Prevents unnecessary model versions in Unity Catalog
 
-# Stricter criteria
-strict_criteria = ProductionCriteria(
-    min_accuracy=0.95,      # 95% accuracy required
-    min_f1_score=0.90,      # 90% F1 required
-    min_accuracy_improvement=0.05  # 5% improvement over champion
-)
-
-# Pass to promotion script
-promote_model_to_production(run_id="abc123", criteria=strict_criteria)
+**Example:**
+```bash
+# If model achieves 100% accuracy (same as existing v2)
+⚠️  Model with identical performance already exists:
+   Version 2: anthropic/claude-sonnet-4-5-20250929
+   Accuracy: 100.00%
+   Alias: challenger
+   ❌ Will NOT register duplicate model to Unity Catalog
 ```
 
 ## Next Steps
