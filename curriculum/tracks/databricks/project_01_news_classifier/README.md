@@ -81,13 +81,27 @@ We run **identical experiments** on both tracks:
   - ✅ Access to GPT-5.1, Claude, Gemini via Databricks
   - ✅ Wide model variety (20+ models)
 
-**Models available:**
-- **OpenAI via Databricks**: GPT-5.1, GPT-5, GPT-5-mini, GPT OSS 120B, GPT OSS 20B
-- **Google**: Gemini 3 Pro, Gemini 2.5 Pro, Gemini 2.5 Flash
-- **Meta Llama**: Llama 4 Maverick, Llama 3.3 70B, Llama 3.1 405B/8B
-- **Anthropic**: Claude Sonnet 4.5, Claude Sonnet 4, Claude Opus 4.1
-- **Databricks**: DBRX (proprietary flagship)
-- **Open models**: Qwen3 Next 80B (Alibaba)
+**Models available in Free Edition (as of November 2025):**
+
+**✅ Available in Free Edition:**
+- **OpenAI**: `databricks-gpt-5-1` ⚠️ **Heavy rate limits**, `databricks-gpt-oss-120b`, `databricks-gpt-oss-20b` ✅ **Recommended**
+- **Meta Llama**: `databricks-llama-4-maverick`, `databricks-meta-llama-3-3-70b-instruct`, `databricks-meta-llama-3-1-405b-instruct`, `databricks-meta-llama-3-1-8b-instruct`
+- **Google**: `databricks-gemma-3-12b`
+- **Alibaba**: `databricks-qwen3-next-80b-a3b-instruct`
+- **Embeddings**: `databricks-gte-large-en`, `databricks-bge-large-en`
+
+**❌ NOT Available in Free Edition:**
+- **Anthropic**: Claude models (Sonnet 4.5, Sonnet 4, Opus 4.1)
+- **Google**: Gemini 2.5/3 Pro/Flash models
+- Other commercial models may require paid tier
+
+> ⚠️ **RETIRED (April 2025):** `databricks-dbrx-instruct`, `databricks-mixtral-8x7b-instruct`
+>
+> ⚠️ **Rate Limits in Free Edition:**
+> - **GPT-5.1**: Very restrictive rate limits (may fail on 10+ article batch)
+> - **Recommended for Free Edition**: `databricks-gpt-oss-20b`, `databricks-meta-llama-3-3-70b-instruct`
+>
+> 💡 **Tip:** Check your workspace's Serving Endpoints page to see exactly which models are available in your region.
 
 ### What Gets Measured
 
@@ -151,8 +165,8 @@ This project implements two parallel MLflow experiments for news classification:
 - **Approach**: External API calls with secrets management
 
 ### Track B: Databricks Foundation Model Agent
-- **Provider**: Databricks Foundation Model APIs (OpenAI, Google, Meta, Anthropic, OSS)
-- **Models**: GPT-5.1, GPT OSS 20B/120B, Claude 4.5, Gemini 3, Llama 4, DBRX, and more
+- **Provider**: Databricks Foundation Model APIs (OpenAI OSS, Meta, Google, Anthropic)
+- **Models**: Llama 3.3 70B/405B, GPT OSS 20B/120B, Claude 4.5 (paid), Gemini 3 (paid), and more
 - **Approach**: Pay-per-token via Databricks, data stays internal
 
 ## Project Structure
@@ -428,59 +442,114 @@ databricks jobs create --json '{
 
 ## Running Experiments
 
+### Prerequisites
+
+```bash
+# 1. Activate conda environment
+conda activate news-classifier-agent
+
+# 2. Ensure config/.env is set up with your Databricks credentials
+# See "Setup" section below
+```
+
 ### Using Make (Recommended)
 
 ```bash
-# Run Track A (External Model with OpenAI)
-make run-external
+# Track A: External Models (OpenAI/Anthropic)
+make run-external                    # Default: OpenAI GPT-4o-mini
+make run-external PROVIDER=anthropic # Anthropic Claude 3.5 Sonnet
 
-# Run Track A with Anthropic
-make run-external PROVIDER=anthropic
-
-# Run Track B (Internal Model with DBRX)
-make run-internal
-
-# Run Track B with Llama-3
-make run-internal MODEL=databricks-meta-llama-3-70b-instruct
+# Track B: Databricks Foundation Models (Free Edition)
+make run-internal                                                # Default: databricks-gpt-oss-20b
+make run-internal MODEL=databricks-gpt-5-1                       # GPT-5.1
+make run-internal MODEL=databricks-gpt-oss-120b                  # GPT-OSS 120B
+make run-internal MODEL=databricks-llama-4-maverick              # Meta Llama 4 Maverick
+make run-internal MODEL=databricks-meta-llama-3-3-70b-instruct   # Meta Llama 3.3 70B
+make run-internal MODEL=databricks-meta-llama-3-1-405b-instruct  # Meta Llama 3.1 405B
+make run-internal MODEL=databricks-gemma-3-12b                   # Google Gemma 3 12B
+make run-internal MODEL=databricks-qwen3-next-80b-a3b-instruct   # Qwen3 Next 80B
 
 # Run BOTH tracks for comparison
 make run-both
 ```
 
-### Using MLflow Run Directly
+### Using Python Directly
 
 ```bash
 # Activate conda environment first
 conda activate news-classifier-agent
 
-# Run Track A (External Model)
-mlflow run . -e track_a_external -P provider=openai
-mlflow run . -e track_a_external -P provider=anthropic
-
-# Run Track B (Internal Model)
-mlflow run . -e track_b_internal -P model=databricks-dbrx-instruct
-mlflow run . -e track_b_internal -P model=databricks-meta-llama-3-70b-instruct
-
-# Run both tracks
-mlflow run . -e main -P track=both
-```
-
-### Using Python Directly (Alternative)
-
-```bash
-# Activate conda environment first
-conda activate news-classifier-agent
-
-# Run Track A
+# Track A: External Models
 python track_a_external/experiment_external.py --provider openai
 python track_a_external/experiment_external.py --provider anthropic
 
-# Run Track B
-python track_b_internal/experiment_internal.py --model databricks-dbrx-instruct
+# Track B: Databricks Foundation Models (Free Edition)
+python track_b_internal/experiment_internal.py --model databricks-gpt-oss-20b
+python track_b_internal/experiment_internal.py --model databricks-gpt-oss-120b
+python track_b_internal/experiment_internal.py --model databricks-meta-llama-3-3-70b-instruct
+python track_b_internal/experiment_internal.py --model databricks-meta-llama-3-1-405b-instruct
 
-# Run both
+# Run both tracks
 python main.py --track both
 ```
+
+### Production Model Registration Options
+
+The experiments support 3 production promotion patterns:
+
+```bash
+# Option 1: Manual approval (requires human approval before registering)
+python track_b_internal/experiment_internal.py --model databricks-gpt-5.1 --require-approval
+
+# Option 2: Automated gating (default - compares to Champion, registers as Challenger/Candidate)
+python track_b_internal/experiment_internal.py --model databricks-gpt-5.1
+
+# Option 3: Skip registration entirely
+python track_b_internal/experiment_internal.py --model databricks-gpt-5.1 --no-register
+```
+
+### Available Models
+
+**Track A - External Models:**
+- `openai` → GPT-4o-mini (default)
+- `anthropic` → Claude 3.5 Sonnet
+
+**Track B - Databricks Foundation Models:**
+
+**✅ Available in Free Edition:**
+- **OpenAI**: `databricks-gpt-5-1` ⚠️ **Heavy rate limits**, `databricks-gpt-oss-120b`, `databricks-gpt-oss-20b` ✅ **Recommended (default)**
+- **Meta Llama**: `databricks-llama-4-maverick`, `databricks-meta-llama-3-3-70b-instruct` ✅ **Recommended**, `databricks-meta-llama-3-1-405b-instruct`, `databricks-meta-llama-3-1-8b-instruct`
+- **Google**: `databricks-gemma-3-12b`
+- **Alibaba**: `databricks-qwen3-next-80b-a3b-instruct`
+
+**❌ NOT Available in Free Edition:**
+- **Anthropic**: Claude models (requires paid tier)
+- **Google**: Gemini 2.5/3 Pro/Flash models
+
+> ⚠️ **RETIRED (April 2025):** `databricks-dbrx-instruct`, `databricks-mixtral-8x7b-instruct`
+>
+> ⚠️ **Rate Limits:** GPT-5.1 has restrictive limits in Free Edition. Use `databricks-gpt-oss-20b` or `databricks-meta-llama-3-3-70b-instruct` for reliable experiments.
+>
+> 💡 **Tip:** Check your workspace's Serving Endpoints page to confirm availability. Navigate to: **Compute** → **Serving** in Databricks UI.
+> ```bash
+> make list-models  # Lists available Foundation Model endpoints
+> ```
+
+### Why NOT `mlflow run`?
+
+❌ **`mlflow run .` is NOT supported** because it creates MLflow run context conflicts.
+
+**The Problem:**
+```bash
+mlflow run . -e track_b_internal  # Creates outer MLflow run
+  → experiment_internal.py calls mlflow.start_run()  # Creates inner MLflow run
+  → ❌ CONFLICT: "active run ID does not match environment run ID"
+```
+
+**The Solution:**
+Use `make` commands or run Python scripts directly - both give you full control over the MLflow run lifecycle.
+
+See [Why `mlflow run` Doesn't Work](#mlflow-run-explanation) for technical details.
 
 ## What Gets Logged to MLflow
 
@@ -886,6 +955,62 @@ promote_model_to_production(run_id="abc123", criteria=strict_criteria)
 │                                                               │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## MLflow Run Context Conflicts Explained {#mlflow-run-explanation}
+
+### Why `mlflow run` Doesn't Work with This Project
+
+When you use `mlflow run .`, MLflow follows these steps:
+
+1. **MLflow creates a parent run** with ID `abc123`
+2. **Sets environment variable** `MLFLOW_RUN_ID=abc123`
+3. **Launches your script** `experiment_internal.py`
+4. **Your script calls** `mlflow.start_run()` → Creates NEW run with ID `xyz789`
+5. **MLflow detects conflict**: Parent run `abc123` ≠ Child run `xyz789`
+6. **ERROR**: `MlflowException: Cannot start run with ID abc123 because active run ID does not match environment run ID`
+
+### The Two Approaches
+
+**Approach 1: Direct Python Execution (What We Use)**
+```bash
+# You control the entire run lifecycle
+python track_b_internal/experiment_internal.py --model databricks-gpt-5.1
+
+# Script creates ONE run with custom name
+mlflow.start_run(run_name="internal_gpt-5.1_20251129_143329")
+```
+
+✅ **Benefits:**
+- Full control over run naming
+- No environment variable conflicts
+- Clear error messages
+- Better for learning/debugging
+
+**Approach 2: MLflow Run (Would Require Refactoring)**
+```bash
+# MLflow controls the run lifecycle
+mlflow run . -e track_b_internal -P model=databricks-gpt-5.1
+
+# Script must NOT call start_run(), just log to existing run
+# mlflow.log_param(...)  # Uses run created by mlflow run
+# mlflow.log_metric(...)
+```
+
+⚠️ **Trade-offs:**
+- MLflow controls run names
+- Better for packaged/remote projects
+- More abstraction = harder to debug
+
+### When to Use Each
+
+| Use `mlflow run` | Use Direct Python |
+|------------------|-------------------|
+| Running remote git repos | Local development |
+| Deploying packaged projects | Learning/debugging |
+| CI/CD pipelines | Custom run naming |
+| Team standardization | Full control needed |
+
+**For this learning project:** Direct Python execution is better because you see exactly what's happening!
 
 ## What You'll Learn
 
