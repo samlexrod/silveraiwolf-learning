@@ -1,5 +1,5 @@
 ---
-description: Install the SilverAIWolf Agentic Engineering environment — tmux, agent teams, and silver-plan plugin
+description: "[Stage 0] Install the SilverAIWolf Agentic Engineering environment — tmux, agent teams, and silver-plan plugin"
 ---
 
 # Agentic Engineering Setup
@@ -32,9 +32,9 @@ Run `tmux -V`. If not installed, run `brew install tmux`. Confirm it installed s
 Read `~/.claude/settings.json` if it exists. Ensure it contains:
 
 - `"env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" }`
-- `"permissions": { "allow": [ "Read", "Write", "Edit", "Glob", "Grep", "Bash", "ToolSearch", "TaskUpdate", "TaskList", "TaskGet", "TaskCreate", "SendMessage" ] }`
+- `"permissions": { "allow": [ "Read", "Write", "Edit", "Glob", "Grep", "Bash", "ToolSearch", "TaskUpdate", "TaskList", "TaskGet", "TaskCreate", "SendMessage" ], "deny": [ "Edit .env", "Write .env", "Edit **/.env", "Write **/.env" ] }`
 
-These permissions let teammates read/write files, run commands, track tasks, and communicate without blocking on permission prompts.
+These permissions let teammates read/write files, run commands, track tasks, and communicate without blocking on permission prompts. The `deny` rules prevent accidentally writing secrets to `.env` files — credentials should only be added manually by the user.
 
 If the file doesn't exist, create it with those settings. If it exists, merge the required keys without removing existing settings. For `permissions.allow`, append entries to any existing allow list without duplicating.
 
@@ -103,8 +103,7 @@ Claude Code discovers custom slash commands from `~/.claude/commands/`. Copy eac
 
 3. Copy the plugin commands:
    ```bash
-   cp .claude/plugins/silver-plan/commands/dev-mode.md ~/.claude/commands/silver-plan:dev-mode.md
-cp .claude/plugins/silver-plan/commands/clean-workspace.md ~/.claude/commands/silver-plan:clean-workspace.md
+   cp .claude/plugins/silver-plan/commands/clean-workspace.md ~/.claude/commands/silver-plan:clean-workspace.md
    cp .claude/plugins/silver-plan/commands/kill-zombies.md ~/.claude/commands/silver-plan:kill-zombies.md
    cp .claude/plugins/silver-plan/commands/help.md ~/.claude/commands/silver-plan:help.md
    ```
@@ -124,8 +123,8 @@ cp .claude/plugins/silver-plan/commands/clean-workspace.md ~/.claude/commands/si
 
 2. Copy the skill and command files:
    ```bash
-   cp .claude/plugins/silver-databricks/skills/create-scenario/SKILL.md ~/.claude/commands/silver-databricks:create-scenario.md
-   cp .claude/plugins/silver-databricks/commands/dev-mode.md ~/.claude/commands/silver-databricks:dev-mode.md
+   cp .claude/plugins/silver-databricks/skills/scaffold-setup/SKILL.md ~/.claude/commands/silver-databricks:scaffold-setup.md
+   cp .claude/plugins/silver-databricks/skills/deploy-dev/SKILL.md ~/.claude/commands/silver-databricks:deploy-dev.md
    cp .claude/plugins/silver-databricks/commands/start.md ~/.claude/commands/silver-databricks:start.md
    ```
 
@@ -148,12 +147,13 @@ Display a summary:
   - `/silver-plan:tdr-to-jira` — Generate JIRA tickets from a TDR
   - `/silver-plan:okr-to-jira` — Run the full end-to-end pipeline
 - **Available commands** (after restart):
-  - `/silver-plan:dev-mode` — Edit the plugin itself
-- `/silver-plan:clean-workspace` — Clean pipeline output
+  - `/dev-mode` — Switch to development mode (works for any plugin)
+  - `/silver-plan:clean-workspace` — Clean pipeline output
   - `/silver-plan:kill-zombies` — Kill stale agent processes
 - **silver-databricks** (after restart):
-  - `/silver-databricks:create-scenario` — Scaffold a financial risk pipeline project
-  - `/silver-databricks:dev-mode` — Edit the tutorial itself
+  - `/silver-databricks:scaffold-setup` — Scaffold project + configure Databricks credentials
+  - `/silver-databricks:deploy-dev` — Deploy bundle, create volume, upload seed data
+  - `/silver-databricks:start` — Show the tutorial overview
 
 Remind the user to **restart Claude Code** for the new commands to appear in autocomplete.
 

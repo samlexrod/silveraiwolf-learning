@@ -22,6 +22,8 @@ rm -f ~/.claude/commands/silver-plan:dev-mode.md
 rm -f ~/.claude/commands/silver-plan:clean-workspace.md
 rm -f ~/.claude/commands/silver-plan:kill-zombies.md
 rm -f ~/.claude/commands/silver-plan:help.md
+rm -f ~/.claude/commands/silver-databricks:scaffold-setup.md
+rm -f ~/.claude/commands/silver-databricks:setup.md
 rm -f ~/.claude/commands/silver-databricks:create-scenario.md
 rm -f ~/.claude/commands/silver-databricks:dev-mode.md
 rm -f ~/.claude/commands/silver-databricks:start.md
