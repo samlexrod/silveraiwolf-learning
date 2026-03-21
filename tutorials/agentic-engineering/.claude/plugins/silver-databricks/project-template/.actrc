@@ -1,0 +1,2 @@
+--platform ubuntu-latest=catthehacker/ubuntu:act-latest
+--env ACTIONS_RUNNER_DEBUG=false

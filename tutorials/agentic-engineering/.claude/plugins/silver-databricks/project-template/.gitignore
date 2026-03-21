@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Data
+data/seed/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Databricks
+.databricks/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# act secrets
+.secrets

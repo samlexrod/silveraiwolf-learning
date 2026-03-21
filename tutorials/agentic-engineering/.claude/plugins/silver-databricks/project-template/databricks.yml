@@ -1,0 +1,57 @@
+bundle:
+  name: financial-risk-pipeline
+
+variables:
+  catalog:
+    default: main
+  schema:
+    default: financial_risk
+
+resources:
+  pipelines:
+    financial_risk_pipeline:
+      name: "Financial Risk Pipeline"
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      serverless: true
+      configuration:
+        pipeline.schema: ${var.schema}
+      root_path: src/financial_risk
+      libraries:
+        # Bronze — raw ingestion
+        - file:
+            path: src/financial_risk/bronze/counterparties.py
+        - file:
+            path: src/financial_risk/bronze/transactions.py
+        - file:
+            path: src/financial_risk/bronze/market_data.py
+        # Silver — cleaned and conformed
+        - file:
+            path: src/financial_risk/silver/counterparties.py
+        - file:
+            path: src/financial_risk/silver/transactions.py
+        - file:
+            path: src/financial_risk/silver/market_data.py
+        - file:
+            path: src/financial_risk/silver/positions.py
+        # Gold — business metrics
+        - file:
+            path: src/financial_risk/gold/financial_ratios.py
+        - file:
+            path: src/financial_risk/gold/risk_exposure.py
+        - file:
+            path: src/financial_risk/gold/portfolio_summary.py
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      schema: financial_risk_${workspace.current_user.short_name}
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/pipelines/${bundle.name}/${bundle.target}
+    variables:
+      schema: financial_risk

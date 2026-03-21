@@ -1,0 +1,63 @@
+[env]
+_.file = ".env"
+
+[tools]
+python = "3.11"
+
+[tasks.install]
+description = "Install dependencies"
+run = "uv sync --extra dev"
+
+[tasks.lint]
+description = "Lint source and tests"
+run = "uv run ruff check src/ tests/"
+
+[tasks.format]
+description = "Format source and tests"
+run = """
+uv run ruff format src/ tests/
+uv run ruff check --fix src/ tests/
+"""
+
+[tasks.test]
+description = "Run unit tests"
+run = "uv run pytest tests/unit/ -v"
+
+[tasks."test:cov"]
+description = "Run unit tests with coverage"
+run = "uv run pytest tests/unit/ -v --cov=financial_risk --cov-report=term-missing"
+
+[tasks.ci]
+description = "Run full CI locally (lint + test)"
+depends = ["lint", "test"]
+
+[tasks.seed]
+description = "Generate seed data"
+run = "uv run python data/generate_seed_data.py"
+
+[tasks.clean]
+description = "Remove generated files"
+run = """
+rm -rf data/seed/ .pytest_cache .ruff_cache __pycache__
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+"""
+
+[tasks."deploy:dev"]
+description = "Deploy to Databricks (dev)"
+run = "databricks bundle deploy --target dev"
+
+[tasks."deploy:prod"]
+description = "Deploy to Databricks (prod)"
+run = "databricks bundle deploy --target prod"
+
+[tasks."act:ci"]
+description = "Run CI locally with act (lint + test + validate)"
+run = "act pull_request"
+
+[tasks."act:cd:dry"]
+description = "Dry-run CD pipeline (validate without deploying)"
+run = "act push --secret-file .secrets --dryrun"
+
+[tasks."act:cd"]
+description = "Deploy to production via CD pipeline (act)"
+run = "act push --secret-file .secrets"
