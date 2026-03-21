@@ -1,10 +1,10 @@
 ---
-description: "[Stage 0] Install the SilverAIWolf Agentic Engineering environment — tmux, agent teams, and silver-plan plugin"
+description: "[Stage 0] Install the SilverAIWolf Agentic Engineering environment — tmux, agent teams, and all plugins"
 ---
 
 # Agentic Engineering Setup
 
-Install tmux, configure Claude Code agent teams, and install the silver-plan plugin globally so all skills and commands are available across sessions.
+Install tmux, configure Claude Code agent teams, and install all plugins (silver-plan, silver-databricks, silver-databricks-streaming) globally so all skills and commands are available across sessions.
 
 ## Instructions
 
@@ -72,18 +72,29 @@ If the user selected `"tmux"` mode:
 
 2. Enable mouse support — check if `~/.tmux.conf` contains `set -g mouse on`. If not, append it. If tmux is running, reload with `tmux source-file ~/.tmux.conf`.
 
-### 5. Locate the silver-plan plugin
+### 5. Locate all plugins
 
-The plugin directory is at `.claude/plugins/silver-plan/` relative to this project root. Verify it exists:
+The plugins live at `.claude/plugins/` relative to this project root. Verify each exists:
 
 ```bash
+# silver-plan
 ls .claude/plugins/silver-plan/.claude-plugin/plugin.json
 ls .claude/plugins/silver-plan/skills/
 ls .claude/plugins/silver-plan/shared/agents/
 ls .claude/plugins/silver-plan/commands/
+
+# silver-databricks
+ls .claude/plugins/silver-databricks/.claude-plugin/plugin.json
+ls .claude/plugins/silver-databricks/skills/
+ls .claude/plugins/silver-databricks/commands/
+
+# silver-databricks-streaming
+ls .claude/plugins/silver-databricks-streaming/.claude-plugin/plugin.json
+ls .claude/plugins/silver-databricks-streaming/skills/
+ls .claude/plugins/silver-databricks-streaming/commands/
 ```
 
-If not found, inform the user the plugin is missing.
+Report any missing plugins to the user.
 
 ### 6. Install silver-plan commands globally
 
@@ -115,45 +126,84 @@ Claude Code discovers custom slash commands from `~/.claude/commands/`. Copy eac
 
 ### 7. Install silver-databricks commands globally
 
-1. Verify the plugin exists:
-   ```bash
-   ls .claude/plugins/silver-databricks/.claude-plugin/plugin.json
-   ls .claude/plugins/silver-databricks/skills/
-   ```
-
-2. Copy the skill and command files:
+1. Copy all skill and command files:
    ```bash
    cp .claude/plugins/silver-databricks/skills/scaffold-setup/SKILL.md ~/.claude/commands/silver-databricks:scaffold-setup.md
    cp .claude/plugins/silver-databricks/skills/deploy-dev/SKILL.md ~/.claude/commands/silver-databricks:deploy-dev.md
+   cp .claude/plugins/silver-databricks/skills/run-bronze/SKILL.md ~/.claude/commands/silver-databricks:run-bronze.md
+   cp .claude/plugins/silver-databricks/skills/run-silver/SKILL.md ~/.claude/commands/silver-databricks:run-silver.md
+   cp .claude/plugins/silver-databricks/skills/run-gold/SKILL.md ~/.claude/commands/silver-databricks:run-gold.md
+   cp .claude/plugins/silver-databricks/skills/run-cicd/SKILL.md ~/.claude/commands/silver-databricks:run-cicd.md
+   cp .claude/plugins/silver-databricks/skills/cleanup/SKILL.md ~/.claude/commands/silver-databricks:cleanup.md
    cp .claude/plugins/silver-databricks/commands/start.md ~/.claude/commands/silver-databricks:start.md
    ```
 
-3. Verify:
+2. Verify:
    ```bash
    ls ~/.claude/commands/silver-databricks:*.md
    ```
 
-### 8. Report status
+### 8. Install silver-databricks-streaming commands globally
+
+1. Copy all skill and command files:
+   ```bash
+   cp .claude/plugins/silver-databricks-streaming/skills/infra-setup/SKILL.md ~/.claude/commands/silver-databricks-streaming:infra-setup.md
+   cp .claude/plugins/silver-databricks-streaming/skills/seed-postgres/SKILL.md ~/.claude/commands/silver-databricks-streaming:seed-postgres.md
+   cp .claude/plugins/silver-databricks-streaming/skills/stream-bronze/SKILL.md ~/.claude/commands/silver-databricks-streaming:stream-bronze.md
+   cp .claude/plugins/silver-databricks-streaming/skills/stream-silver/SKILL.md ~/.claude/commands/silver-databricks-streaming:stream-silver.md
+   cp .claude/plugins/silver-databricks-streaming/skills/stream-gold/SKILL.md ~/.claude/commands/silver-databricks-streaming:stream-gold.md
+   cp .claude/plugins/silver-databricks-streaming/skills/run-jobs/SKILL.md ~/.claude/commands/silver-databricks-streaming:run-jobs.md
+   cp .claude/plugins/silver-databricks-streaming/skills/simulate-changes/SKILL.md ~/.claude/commands/silver-databricks-streaming:simulate-changes.md
+   cp .claude/plugins/silver-databricks-streaming/skills/verify-cdc/SKILL.md ~/.claude/commands/silver-databricks-streaming:verify-cdc.md
+   cp .claude/plugins/silver-databricks-streaming/skills/production-notes/SKILL.md ~/.claude/commands/silver-databricks-streaming:production-notes.md
+   cp .claude/plugins/silver-databricks-streaming/skills/cleanup/SKILL.md ~/.claude/commands/silver-databricks-streaming:cleanup.md
+   cp .claude/plugins/silver-databricks-streaming/commands/start.md ~/.claude/commands/silver-databricks-streaming:start.md
+   ```
+
+2. Verify:
+   ```bash
+   ls ~/.claude/commands/silver-databricks-streaming:*.md
+   ```
+
+### 9. Report status
 
 Display a summary:
 
 - **tmux**: installed version
 - **Agent teams**: enabled with permissions
 - **Teammate mode**: user's choice
-- **Plugin source**: resolved absolute path to `.claude/plugins/silver-plan/`
+- **Plugin sources**: resolved absolute paths to `.claude/plugins/`
 - **Installed to**: `~/.claude/commands/`
-- **Available skills** (after restart):
+- **silver-plan** (after restart):
   - `/silver-plan:prd-to-tdr` — Generate a TDR from a PRD
   - `/silver-plan:tdr-to-jira` — Generate JIRA tickets from a TDR
   - `/silver-plan:okr-to-jira` — Run the full end-to-end pipeline
-- **Available commands** (after restart):
-  - `/dev-mode` — Switch to development mode (works for any plugin)
   - `/silver-plan:clean-workspace` — Clean pipeline output
   - `/silver-plan:kill-zombies` — Kill stale agent processes
+  - `/silver-plan:help` — Show all silver-plan commands
 - **silver-databricks** (after restart):
   - `/silver-databricks:scaffold-setup` — Scaffold project + configure Databricks credentials
-  - `/silver-databricks:deploy-dev` — Deploy bundle, create volume, upload seed data
+  - `/silver-databricks:deploy-dev` — Create Unity Catalog landing zone + upload seed data
+  - `/silver-databricks:run-bronze` — Deploy and run Bronze pipeline
+  - `/silver-databricks:run-silver` — Deploy and run Silver pipeline
+  - `/silver-databricks:run-gold` — Deploy and run Gold pipeline
+  - `/silver-databricks:run-cicd` — Run CI/CD locally then deploy to production
+  - `/silver-databricks:cleanup` — Delete all Databricks artifacts
   - `/silver-databricks:start` — Show the tutorial overview
+- **silver-databricks-streaming** (after restart):
+  - `/silver-databricks-streaming:infra-setup` — Set up streaming infrastructure
+  - `/silver-databricks-streaming:seed-postgres` — Seed PostgreSQL source data
+  - `/silver-databricks-streaming:stream-bronze` — Stream raw data to Bronze
+  - `/silver-databricks-streaming:stream-silver` — Stream cleaned data to Silver
+  - `/silver-databricks-streaming:stream-gold` — Stream business metrics to Gold
+  - `/silver-databricks-streaming:run-jobs` — Run streaming jobs
+  - `/silver-databricks-streaming:simulate-changes` — Simulate CDC changes
+  - `/silver-databricks-streaming:verify-cdc` — Verify CDC propagation
+  - `/silver-databricks-streaming:production-notes` — Production deployment notes
+  - `/silver-databricks-streaming:cleanup` — Clean up streaming resources
+  - `/silver-databricks-streaming:start` — Show the tutorial overview
+- **General commands** (after restart):
+  - `/dev-mode` — Switch to development mode (works for any plugin)
 
 Remind the user to **restart Claude Code** for the new commands to appear in autocomplete.
 
