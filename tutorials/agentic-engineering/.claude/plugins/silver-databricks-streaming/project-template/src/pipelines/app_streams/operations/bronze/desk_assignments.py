@@ -1,0 +1,31 @@
+import pyspark.sql.functions as F
+from pyspark import pipelines as sp
+
+
+@sp.table(
+    name="bronze_cdc_desk_assignments",
+    comment="Raw CDC events from PostgreSQL desk_assignments table via Kafka",
+)
+def bronze_cdc_desk_assignments():
+    bootstrap_servers = spark.conf.get("kafka_options.bootstrap_servers")  # noqa: F821
+
+    return (
+        spark.readStream.format("kafka")  # noqa: F821
+        .option("kafka.bootstrap.servers", bootstrap_servers)
+        .option("subscribe", "postgres.public.desk_assignments")
+        .option("startingOffsets", "earliest")
+        .option(
+            "kafka.security.protocol",
+            spark.conf.get("kafka_options.security_protocol", "PLAINTEXT"),  # noqa: F821
+        )
+        .load()
+        .select(
+            F.col("key").cast("string").alias("kafka_key"),
+            F.col("value").cast("string").alias("kafka_value"),
+            F.col("topic"),
+            F.col("partition"),
+            F.col("offset"),
+            F.col("timestamp").alias("kafka_timestamp"),
+            F.current_timestamp().alias("ingested_at"),
+        )
+    )

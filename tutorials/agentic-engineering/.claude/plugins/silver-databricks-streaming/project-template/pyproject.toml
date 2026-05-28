@@ -1,0 +1,31 @@
+[project]
+name = "financial-risk-streaming"
+version = "0.1.0"
+description = "Databricks streaming CDC pipeline — PostgreSQL via Debezium + Kafka into medallion architecture"
+requires-python = ">=3.11"
+dependencies = ["databricks-sdk>=0.38", "requests>=2.31"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "chispa>=0.10",
+    "pyspark>=3.5",
+    "delta-spark>=3.1",
+    "ruff>=0.8",
+    "psycopg2-binary>=2.9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+ignore = ["N812"]  # PySpark: `import functions as F`
+
+[tool.ruff.lint.isort]
+known-first-party = ["pipelines", "jobs"]

@@ -1,0 +1,29 @@
+# Environment
+.env
+.secrets
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# IDE
+.idea/
+.vscode/
+
+# Testing
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Databricks
+.bundle/
