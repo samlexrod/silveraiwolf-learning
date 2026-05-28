@@ -1,0 +1,46 @@
+[env]
+AWS_PROFILE = "silveraiwolf"
+
+[tools]
+terraform = "1.9"
+awscli = "2"
+
+[tasks.init]
+description = "Initialize Terraform"
+run = "cd terraform && terraform init"
+
+[tasks.plan]
+description = "Preview infrastructure changes"
+run = "cd terraform && terraform plan"
+
+[tasks.apply]
+description = "Provision EC2 + networking (no OpenSearch)"
+run = "cd terraform && terraform apply -auto-approve"
+
+[tasks."apply:opensearch"]
+description = "Add OpenSearch domain to existing infra (~10-15 min provisioning)"
+run = "cd terraform && terraform apply -auto-approve -var enable_opensearch=true"
+
+[tasks.destroy]
+description = "Tear down all AWS resources (EC2 + OpenSearch)"
+run = "cd terraform && terraform destroy -auto-approve"
+
+[tasks.ssh]
+description = "SSH into the CDC instance"
+run = "ssh -i $(terraform -chdir=terraform output -raw key_path) ec2-user@$(terraform -chdir=terraform output -raw public_ip)"
+
+[tasks.status]
+description = "Show Docker container status on EC2"
+run = "ssh -i $(terraform -chdir=terraform output -raw key_path) ec2-user@$(terraform -chdir=terraform output -raw public_ip) 'cd ~/cdc-stack && docker compose ps'"
+
+[tasks.logs]
+description = "Show Docker logs from EC2"
+run = "ssh -i $(terraform -chdir=terraform output -raw key_path) ec2-user@$(terraform -chdir=terraform output -raw public_ip) 'cd ~/cdc-stack && docker compose logs --tail 50'"
+
+[tasks.topics]
+description = "List Redpanda topics"
+run = "ssh -i $(terraform -chdir=terraform output -raw key_path) ec2-user@$(terraform -chdir=terraform output -raw public_ip) 'docker exec redpanda rpk topic list'"
+
+[tasks.outputs]
+description = "Show Terraform outputs (IPs, URLs)"
+run = "cd terraform && terraform output"

@@ -1,0 +1,73 @@
+[env]
+_.file = ".env"
+
+[tools]
+python = "3.11"
+
+[tasks.install]
+description = "Install dependencies using uv"
+run = "uv sync --extra dev"
+
+[tasks.lint]
+description = "Lint source code"
+run = "uv run ruff check src/ tests/"
+
+[tasks.format]
+description = "Format source code"
+run = "uv run ruff format src/ tests/ && uv run ruff check --fix src/ tests/"
+
+[tasks.test]
+description = "Run unit tests"
+run = "uv run pytest tests/unit/ -v"
+
+[tasks."test:cov"]
+description = "Run tests with coverage"
+run = "uv run pytest tests/unit/ -v --cov=financial_risk_streaming --cov-report=term-missing"
+
+[tasks.ci]
+description = "Run lint + tests"
+depends = ["lint", "test"]
+
+[tasks.clean]
+description = "Clean generated files"
+run = "rm -rf .pytest_cache .ruff_cache __pycache__; find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true"
+
+[tasks."deploy:dev"]
+description = "Deploy pipeline to Databricks (dev)"
+run = "databricks bundle deploy --target dev"
+
+[tasks."deploy:prod"]
+description = "Deploy pipeline to Databricks (prod)"
+run = "databricks bundle deploy --target prod"
+
+[tasks."infra:init"]
+description = "Initialize Terraform"
+run = "cd infra && mise run init"
+
+[tasks."infra:plan"]
+description = "Preview infrastructure changes"
+run = "cd infra && mise run plan"
+
+[tasks."infra:apply"]
+description = "Provision EC2 + CDC stack (no OpenSearch)"
+run = "cd infra && mise run apply"
+
+[tasks."infra:apply:opensearch"]
+description = "Add OpenSearch domain (~10-15 min)"
+run = "cd infra && mise run apply:opensearch"
+
+[tasks."infra:destroy"]
+description = "Tear down all AWS resources"
+run = "cd infra && mise run destroy"
+
+[tasks."infra:ssh"]
+description = "SSH into the CDC instance"
+run = "cd infra && mise run ssh"
+
+[tasks."infra:status"]
+description = "Show Docker container status on EC2"
+run = "cd infra && mise run status"
+
+[tasks."infra:topics"]
+description = "List Redpanda topics"
+run = "cd infra && mise run topics"

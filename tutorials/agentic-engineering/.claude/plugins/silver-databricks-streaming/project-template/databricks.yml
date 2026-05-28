@@ -1,0 +1,258 @@
+bundle:
+  name: financial-risk-monorepo
+
+variables:
+  catalog:
+    description: "Unity Catalog catalog name"
+    default: main
+  schema:
+    description: "Target schema for pipeline tables"
+    default: financial_risk_streaming
+  kafka_bootstrap_servers:
+    description: "Kafka bootstrap servers for CDC pipeline"
+  unified_schema:
+    description: "Schema for the unified single-pipeline approach"
+    default: financial_risk_unified
+  opensearch_endpoint:
+    description: "OpenSearch domain endpoint (https://...)"
+    default: ""
+  opensearch_user:
+    description: "OpenSearch master username"
+    default: "admin"
+  opensearch_password:
+    description: "OpenSearch master password"
+    default: ""
+
+resources:
+  pipelines:
+    app_streams:
+      name: "App Streams — CDC Pipeline"
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      serverless: true
+      continuous: true
+      configuration:
+        pipeline.schema: ${var.schema}
+        pipeline.catalog: ${var.catalog}
+        kafka_options.bootstrap_servers: ${var.kafka_bootstrap_servers}
+        kafka_options.security_protocol: "PLAINTEXT"
+      libraries:
+        # Financial domain
+        - file: { path: src/pipelines/app_streams/financial/bronze/transactions.py }
+        - file: { path: src/pipelines/app_streams/financial/bronze/market_prices.py }
+        - file: { path: src/pipelines/app_streams/financial/silver/transactions.py }
+        - file: { path: src/pipelines/app_streams/financial/silver/market_prices.py }
+        - file: { path: src/pipelines/app_streams/financial/silver/positions.py }
+        - file: { path: src/pipelines/app_streams/financial/gold/financial_ratios.py }
+        - file: { path: src/pipelines/app_streams/financial/gold/portfolio_summary.py }
+        # Counterparty domain
+        - file: { path: src/pipelines/app_streams/counterparty/bronze/counterparties.py }
+        - file: { path: src/pipelines/app_streams/counterparty/bronze/credit_ratings_history.py }
+        - file: { path: src/pipelines/app_streams/counterparty/silver/counterparties.py }
+        - file: { path: src/pipelines/app_streams/counterparty/silver/credit_ratings_history.py }
+        - file: { path: src/pipelines/app_streams/counterparty/gold/counterparty_health.py }
+        # Operations domain
+        - file: { path: src/pipelines/app_streams/operations/bronze/office_locations.py }
+        - file: { path: src/pipelines/app_streams/operations/bronze/trading_desks.py }
+        - file: { path: src/pipelines/app_streams/operations/bronze/desk_assignments.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/office_locations.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/trading_desks.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/desk_assignments.py }
+        - file: { path: src/pipelines/app_streams/operations/gold/desk_overview.py }
+
+    data_fabric:
+      name: "Data Fabric — API Pipeline"
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      serverless: true
+      continuous: true
+      configuration:
+        pipeline.schema: ${var.schema}
+        pipeline.catalog: ${var.catalog}
+      libraries:
+        # Compliance domain
+        - file: { path: src/pipelines/data_fabric/compliance/bronze/sanctions_watchlist.py }
+        - file: { path: src/pipelines/data_fabric/compliance/bronze/kyc_records.py }
+        - file: { path: src/pipelines/data_fabric/compliance/silver/sanctions_watchlist.py }
+        - file: { path: src/pipelines/data_fabric/compliance/silver/kyc_records.py }
+        - file: { path: src/pipelines/data_fabric/compliance/gold/compliance_status.py }
+        # Market Reference domain
+        - file: { path: src/pipelines/data_fabric/market_reference/bronze/exchange_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/bronze/benchmark_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/silver/exchange_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/silver/benchmark_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/gold/reference_rates.py }
+        # Regulatory domain
+        - file: { path: src/pipelines/data_fabric/regulatory/bronze/reporting_requirements.py }
+        - file: { path: src/pipelines/data_fabric/regulatory/silver/reporting_requirements.py }
+        - file: { path: src/pipelines/data_fabric/regulatory/gold/regulatory_metrics.py }
+
+    analytics:
+      name: "Analytics — Cross-Domain Gold"
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      serverless: true
+      continuous: false
+      configuration:
+        pipeline.schema: ${var.schema}
+        pipeline.catalog: ${var.catalog}
+      libraries:
+        - file: { path: src/pipelines/analytics/gold/risk_dashboard.py }
+        - file: { path: src/pipelines/analytics/gold/regulatory_report.py }
+        - file: { path: src/pipelines/analytics/gold/desk_pnl_exposure.py }
+
+    # Unified pipeline — all B+S+G in one pipeline (Stage 10)
+    # Comment out app_streams/data_fabric/analytics above when deploying with --target unified
+    unified_risk:
+      name: "Unified Risk Pipeline"
+      catalog: ${var.catalog}
+      target: ${var.unified_schema}
+      serverless: true
+      continuous: true
+      configuration:
+        pipeline.schema: ${var.unified_schema}
+        pipeline.catalog: ${var.catalog}
+        kafka_options.bootstrap_servers: ${var.kafka_bootstrap_servers}
+        kafka_options.security_protocol: "PLAINTEXT"
+        opensearch.endpoint: ${var.opensearch_endpoint}
+        opensearch.user: ${var.opensearch_user}
+        opensearch.password: ${var.opensearch_password}
+      libraries:
+        # === CDC Bronze (from Kafka) ===
+        - file: { path: src/pipelines/app_streams/financial/bronze/transactions.py }
+        - file: { path: src/pipelines/app_streams/financial/bronze/market_prices.py }
+        - file: { path: src/pipelines/app_streams/counterparty/bronze/counterparties.py }
+        - file: { path: src/pipelines/app_streams/counterparty/bronze/credit_ratings_history.py }
+        - file: { path: src/pipelines/app_streams/operations/bronze/office_locations.py }
+        - file: { path: src/pipelines/app_streams/operations/bronze/trading_desks.py }
+        - file: { path: src/pipelines/app_streams/operations/bronze/desk_assignments.py }
+        # === API Bronze (from Auto Loader) ===
+        - file: { path: src/pipelines/data_fabric/compliance/bronze/sanctions_watchlist.py }
+        - file: { path: src/pipelines/data_fabric/compliance/bronze/kyc_records.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/bronze/exchange_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/bronze/benchmark_rates.py }
+        - file: { path: src/pipelines/data_fabric/regulatory/bronze/reporting_requirements.py }
+        # === CDC Silver (APPLY CHANGES) ===
+        - file: { path: src/pipelines/app_streams/financial/silver/transactions.py }
+        - file: { path: src/pipelines/app_streams/financial/silver/market_prices.py }
+        - file: { path: src/pipelines/app_streams/financial/silver/positions.py }
+        - file: { path: src/pipelines/app_streams/counterparty/silver/counterparties.py }
+        - file: { path: src/pipelines/app_streams/counterparty/silver/credit_ratings_history.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/office_locations.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/trading_desks.py }
+        - file: { path: src/pipelines/app_streams/operations/silver/desk_assignments.py }
+        # === API Silver (streaming transforms) ===
+        - file: { path: src/pipelines/data_fabric/compliance/silver/sanctions_watchlist.py }
+        - file: { path: src/pipelines/data_fabric/compliance/silver/kyc_records.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/silver/exchange_rates.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/silver/benchmark_rates.py }
+        - file: { path: src/pipelines/data_fabric/regulatory/silver/reporting_requirements.py }
+        # === Domain Gold (CDC) ===
+        - file: { path: src/pipelines/app_streams/financial/gold/financial_ratios.py }
+        - file: { path: src/pipelines/app_streams/financial/gold/portfolio_summary.py }
+        - file: { path: src/pipelines/app_streams/counterparty/gold/counterparty_health.py }
+        - file: { path: src/pipelines/app_streams/operations/gold/desk_overview.py }
+        # === Domain Gold (API) ===
+        - file: { path: src/pipelines/data_fabric/compliance/gold/compliance_status.py }
+        - file: { path: src/pipelines/data_fabric/market_reference/gold/reference_rates.py }
+        - file: { path: src/pipelines/data_fabric/regulatory/gold/regulatory_metrics.py }
+        # === Cross-Domain Gold (inline — no separate analytics pipeline) ===
+        - file: { path: src/pipelines/analytics/gold/risk_dashboard.py }
+        - file: { path: src/pipelines/analytics/gold/regulatory_report.py }
+        - file: { path: src/pipelines/analytics/gold/desk_pnl_exposure.py }
+        # === OpenSearch Sink — runs as Docker container on EC2, not in-pipeline ===
+        # See infra/opensearch-sink/ for the PySpark JDBC + opensearch-hadoop sink
+
+  jobs:
+    compliance_daily:
+      name: "Compliance — Daily API Fetch"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "UTC"
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+      tasks:
+        - task_key: fetch_sanctions
+          environment_key: default
+          spark_python_task:
+            python_file: src/jobs/compliance/fetch_sanctions.py
+        - task_key: fetch_kyc
+          environment_key: default
+          spark_python_task:
+            python_file: src/jobs/compliance/fetch_kyc.py
+          depends_on:
+            - task_key: fetch_sanctions
+
+    market_reference_hourly:
+      name: "Market Reference — Hourly API Fetch"
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: "UTC"
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+      tasks:
+        - task_key: fetch_exchange_rates
+          environment_key: default
+          spark_python_task:
+            python_file: src/jobs/market_reference/fetch_exchange_rates.py
+        - task_key: fetch_benchmark_rates
+          environment_key: default
+          spark_python_task:
+            python_file: src/jobs/market_reference/fetch_benchmark_rates.py
+
+    regulatory_hourly:
+      name: "Regulatory — Hourly API Fetch"
+      schedule:
+        quartz_cron_expression: "0 30 * * * ?"
+        timezone_id: "UTC"
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+      tasks:
+        - task_key: fetch_reporting_requirements
+          environment_key: default
+          spark_python_task:
+            python_file: src/jobs/regulatory/fetch_reporting_requirements.py
+
+    # opensearch_indexer — requires classic compute (Maven JARs blocked on serverless)
+    # Use infra/opensearch-sink/ Docker container on EC2 instead (PySpark JDBC + opensearch-hadoop)
+    # Uncomment for Enterprise tier with classic compute clusters:
+    # opensearch_indexer:
+    #   name: "OpenSearch — Gold Table Indexer"
+    #   tasks:
+    #     - task_key: backfill_opensearch
+    #       spark_python_task:
+    #         python_file: src/jobs/opensearch/backfill_opensearch.py
+    #       libraries:
+    #         - maven:
+    #             coordinates: "org.opensearch.client:opensearch-spark-40_2.13:2.0.0"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      schema: financial_risk_streaming_${workspace.current_user.short_name}
+      kafka_bootstrap_servers: ""
+
+  unified:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/unified
+    variables:
+      schema: financial_risk_streaming_${workspace.current_user.short_name}
+      kafka_bootstrap_servers: ""
+      unified_schema: financial_risk_unified_${workspace.current_user.short_name}
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/pipelines/${bundle.name}/${bundle.target}
+    variables:
+      schema: financial_risk_streaming
+      kafka_bootstrap_servers: ""

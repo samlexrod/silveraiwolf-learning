@@ -1,0 +1,16 @@
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored — never commit credentials
+
+aws_region    = "us-east-1"
+key_pair_name = "silveraiwolf-streaming"
+key_path      = "~/.ssh/silveraiwolf-streaming.pem"
+
+# Restrict to your IP for better security (find yours: curl ifconfig.me)
+# allowed_ssh_cidr = "203.0.113.42/32"
+
+# Restrict to Databricks NAT IPs for production
+# databricks_nat_cidrs = ["44.234.x.x/32", "44.234.x.x/32"]
+
+# OpenSearch — only provisioned when enable_opensearch = true (Stage 11)
+enable_opensearch          = false
+opensearch_master_password = "Admin1234!"  # Change this — min 8 chars, upper+lower+num+special
