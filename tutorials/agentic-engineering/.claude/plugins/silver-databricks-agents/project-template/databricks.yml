@@ -1,0 +1,32 @@
+bundle:
+  name: financial-risk-agent
+
+variables:
+  catalog:
+    default: main
+  schema:
+    default: financial_risk
+  llm_endpoint:
+    default: databricks-meta-llama-3-3-70b-instruct
+
+resources:
+  registered_models:
+    risk_agent:
+      name: ${var.catalog}.${var.schema}.risk_agent
+      comment: "Financial risk analysis agent with UC function tools"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      schema: financial_risk_${bundle.target}
+    resources:
+      registered_models:
+        risk_agent:
+          name: ${var.catalog}.${var.schema}.risk_agent
+
+  prod:
+    variables:
+      catalog: main
+      schema: financial_risk

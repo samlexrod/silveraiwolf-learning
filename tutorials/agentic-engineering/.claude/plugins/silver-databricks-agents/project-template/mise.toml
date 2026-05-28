@@ -1,0 +1,45 @@
+[env]
+_.file = ".env"
+
+[tools]
+python = "3.11"
+
+[tasks.install]
+description = "Install dependencies including dev extras"
+run = "uv sync --extra dev"
+
+[tasks.test]
+description = "Run unit tests"
+run = "uv run pytest tests/unit/ -v"
+
+[tasks.lint]
+description = "Lint source and test files"
+run = "uv run ruff check src/ tests/"
+
+[tasks.format]
+description = "Format source and test files"
+run = "uv run ruff format src/ tests/"
+
+[tasks."agent:local"]
+description = "Run the agent locally"
+run = "uv run python -m risk_agent.agent"
+
+[tasks."agent:eval"]
+description = "Run agent evaluation"
+run = "uv run python -m risk_agent.evaluate"
+
+[tasks."tools:create"]
+description = "Create Unity Catalog functions"
+run = "databricks sql execute --file sql/create_uc_functions.sql"
+
+[tasks."tools:drop"]
+description = "Drop Unity Catalog functions"
+run = "databricks sql execute --file sql/drop_uc_functions.sql"
+
+[tasks."deploy:dev"]
+description = "Deploy to dev target"
+run = "databricks bundle deploy --target dev"
+
+[tasks."deploy:prod"]
+description = "Deploy to prod target"
+run = "databricks bundle deploy --target prod"
