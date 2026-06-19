@@ -116,15 +116,15 @@ picture before deciding what to do. Render it verbatim-ish:
 >   `customers · vendors · equipment · applications · contracts (lease/loan) · payment_schedule · invoices ·
 >   payments`.
 > - **Unstructured** — Silverline's **documents**: a lease/loan **agreement PDF** per contract plus
->   **credit-memo** files, landed in a Unity Catalog **volume**.
+>   **credit-memo** files, which you land in a Unity Catalog **volume**.
 >
 > ## What you'll do with it
 > Take the **structured** source through a governed **medallion** (bronze → silver → gold) — built **three ways**
 > (a **notebook** Job, **dbt**, and a declarative **SDP** pipeline) and proven identical with a 3-way parity check —
 > then expose it as a **semantic layer** +
-> **AI/BI dashboards** + a **Genie** space for natural-language Q&A. The **unstructured** documents are landed
-> now in the volume as the foundation for a later **`agents`** phase that embeds them for **Vector Search**
-> (RAG) and joins those hits back to the structured tables.
+> **AI/BI dashboards** + a **Genie** space for natural-language Q&A. You also **land the unstructured**
+> documents in the volume — the foundation for a later **`agents`** phase that embeds them for **Vector
+> Search** (RAG) and joins those hits back to the structured tables.
 >
 > ## What you'll learn
 > - Authenticate the Databricks **CLI** (user OAuth) and wire a local **dbt / mise / uv** project on Free Edition.
