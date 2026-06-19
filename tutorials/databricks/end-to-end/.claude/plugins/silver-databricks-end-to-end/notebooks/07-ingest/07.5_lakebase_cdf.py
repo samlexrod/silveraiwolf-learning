@@ -12,15 +12,18 @@
 # MAGIC > 💳 **Opt-in — costs real money (not just quota).** The external location comes from Databricks
 # MAGIC > **Catalog → External Data → External Locations → Create → AWS quickstart**, which runs a
 # MAGIC > **CloudFormation template in YOUR personal AWS account** to create an **S3 bucket + IAM role**,
-# MAGIC > **billed by AWS to you** — outside Free Edition's $0/quota model. Only do this if you want CDF and
-# MAGIC > accept the AWS cost. The no-cost delete-aware alternative is `07.4_wal_cdc`.
+# MAGIC > **billed by AWS to you** — outside Free Edition's $0/quota model. It's the **same external location**
+# MAGIC > the `landing-zone` stage sets up in its opt-in Section 4 — reuse that if you already created it. Only do
+# MAGIC > this if you want CDF and accept the AWS cost. The no-cost delete-aware alternative is `07.4_wal_cdc`.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 1 — Find YOUR external location
-# MAGIC The AWS quickstart created an external location on your workspace. List them and copy the `url` base —
-# MAGIC you'll set it as a variable below. Your bucket is **not** `silveraiwolf` (that's the tutorial author's).
+# MAGIC The AWS quickstart created an external location on your workspace — **the same one you (optionally) set up
+# MAGIC in the `landing-zone` stage (Section 4)**. If you did it there, reuse it; if not, create it now via Catalog →
+# MAGIC External Data → External Locations → Create → AWS quickstart. List them and copy the `url` base — you'll set
+# MAGIC it as a variable below. Your bucket is **not** `silveraiwolf` (that's the tutorial author's).
 
 # COMMAND ----------
 
