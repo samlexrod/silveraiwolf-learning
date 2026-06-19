@@ -32,10 +32,11 @@ databricks --profile free postgres create-project silverline-oltp \
 databricks --profile free postgres list-projects -o json | jq -r '.[].name'
 ```
 
-> ⚠️ **Re-provisioning after a `cleanup`?** Lakebase **reserves a deleted project's slug** for a retention
-> window, so `create-project silverline-oltp` may fail with **`slug already exists`** even though the project
-> is gone. If so, provision under a fresh name (e.g. `silverline-oltp-2`) and use that name for the rest of the
-> run — the later stages read the project name + host from `.env`, so update those accordingly.
+> 🧠 **`slug already exists`?** The tutorial's `cleanup` **purges** the project, so its slug frees immediately
+> and re-running this stage works. But the plain CLI `postgres delete-project` only **soft-deletes** (slug
+> reserved ~7 days) — if you hit that error from such a delete, free the slug now with
+> `databricks api delete '/api/2.0/postgres/projects/silverline-oltp?purge=true'`, or provision under a fresh
+> name (e.g. `silverline-oltp-2`, threaded through `.env`).
 
 You get a project with a **`production` branch** + a **primary** read-write endpoint and the default
 database `databricks_postgres`.

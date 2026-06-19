@@ -33,14 +33,13 @@ the learner's personal AWS account.
    databricks --profile free postgres list-projects -o json | grep -i silverline-oltp || echo "no lakebase project ✓"
    ```
 
-## ⚠️ Re-provisioning gotcha — the Lakebase slug stays reserved
-Deleting the Lakebase project **soft-deletes** it and **reserves its slug** (`silverline-oltp`) for a
-retention window (observed several hours). So a `cleanup` → immediately re-run `provision` cycle **fails** at
-provisioning with `slug already exists`, even though the project is gone. Two ways through it:
-- **Wait** for the slug to free, or
-- **Re-provision under a different name** — `databricks postgres create-project silverline-oltp-2 --json '{"spec":{"pg_version":17}}'` (set the matching name when you continue the tutorial; the seed/data-api/ingest stages read the project name + host from `.env`, so update those).
-
-The cleanup script prints this reminder at the end too.
+## Re-provisioning works immediately — the project is purged
+The CLI `postgres delete-project` only **soft-deletes** a Lakebase project and **reserves its slug**
+(`silverline-oltp`) for a ~7-day window — which would otherwise break a `cleanup` → re-run `provision` cycle
+(`slug already exists`). So this cleanup **also calls the REST purge** to free the slug immediately:
+`databricks api delete '/api/2.0/postgres/projects/silverline-oltp?purge=true'`. Re-running provision with the
+same name then works right away — no wait, no rename. (Left alone, Lakebase auto-purges at the project's
+`purge_time`, ~7 days after delete.)
 
 ## ⚠️ Not removed — manual, and it costs real money
 If the learner ran the **optional CDF / AWS-quickstart** step, the S3 bucket + IAM role live in **their own
