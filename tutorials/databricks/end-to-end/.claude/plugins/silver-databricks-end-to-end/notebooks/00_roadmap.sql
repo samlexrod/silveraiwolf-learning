@@ -13,7 +13,7 @@
 -- MAGIC | 04 | provision      | Lakebase  | CLI plumbing — see `04-provision/04_overview` | ✅ |
 -- MAGIC | 05 | seed           | Lakebase  | ▶️ **notebooks** `05.1_seed_oltp` → `05.2_data_model` → `05.3_documents` | ✅ |
 -- MAGIC | 06 | data-api       | Lakebase  | enable (UI) + SP (CLI); ▶️ notebook `06-data-api/06.1_data_api_demo` | ✅ |
--- MAGIC | 07 | ingest         | Lakehouse | ▶️ `07.1_ctas_snapshot` · `07.2`(CDF overview) · `07.3_watermark_cdc` · `07.4_wal_cdc` · `07.5_lakebase_cdf` | ✅ |
+-- MAGIC | 07 | ingest         | Lakehouse | ▶️ `07.1_native_catalog`(zero-ETL) · `07.2_ctas_snapshot` · `07.3_watermark_cdc` · `07.4_wal_cdc` · `07.5_lakebase_cdf` | ✅ |
 -- MAGIC | 08 | medallion      | Lakehouse | `08.1_build_ddl` · `08.2_build_dbt` · `08.3_build_sdp` · `08.4_build_notebook` · `08.5_parity` | ✅ |
 -- MAGIC | 09 | refresh        | Lakehouse | ▶️ notebook `09-refresh/09.1_refresh` | ✅ |
 -- MAGIC | 10 | business-layer | Analytics | ▶️ `10-business-layer/10.1_business_layer` | ✅ |

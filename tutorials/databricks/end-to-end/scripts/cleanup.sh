@@ -94,7 +94,10 @@ say "5/9 SDP pipeline"
 for id in $(dbx pipelines list-pipelines -o json 2>/dev/null | pick name "$PIPELINE_NAME" pipeline_id); do run "dbx pipelines delete \"$id\""; done
 
 say "6/9 UC catalogs (force-drops schemas/tables/views/volume/metric-view/functions)"
-for c in "$LAKEBASE_UC_CATALOG" "$CDF_CATALOG" "$CATALOG"; do run "dbx catalogs delete \"$c\" --force"; done
+# The Lakebase-registered catalog is a CATALOG_MANAGED_POSTGRESQL (online) catalog — 'catalogs delete'
+# refuses it ("cannot be deleted"); remove it via the postgres catalogs API instead.
+run "dbx api delete \"/api/2.0/postgres/catalogs/$LAKEBASE_UC_CATALOG\""
+for c in "$CDF_CATALOG" "$CATALOG"; do run "dbx catalogs delete \"$c\" --force"; done
 
 say "7/9 Lakebase project (serverless Postgres — also drops the WAL slot + triggers)"
 run "dbx postgres delete-project \"$LAKEBASE_PROJECT\""

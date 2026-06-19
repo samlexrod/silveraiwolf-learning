@@ -1,47 +1,24 @@
 -- Databricks notebook source
 -- MAGIC %md
--- MAGIC # Stage 7 — Ingest · Pattern 1 of 3: **CTAS snapshot**
+-- MAGIC # Stage 7 — Ingest · materialize bronze (pattern 1 of 4): **CTAS snapshot**
 -- MAGIC
--- MAGIC Lakebase is a **first-class Unity Catalog citizen**. The instance was registered as a native UC
--- MAGIC catalog **`lakebase_silverline_oltp`** (done via CLI: `databricks database create-database-catalog`),
--- MAGIC so you query `lakebase_silverline_oltp.public.<table>` *directly* — no Lakehouse Federation.
+-- MAGIC In **`07.1`** you queried Lakebase **in place** (zero-ETL, no copy). Now we **materialize** it: land all 9
+-- MAGIC OLTP tables into `silverline.bronze` as **Delta**, via **CTAS (full snapshot)** — the simplest of the four
+-- MAGIC materialization patterns and the baseline the CDC ones (`07.3`–`07.5`) refine. The source is the same
+-- MAGIC native catalog `lakebase_silverline_oltp.public.<table>` (registered in `07.1`). Run on the **Starter
+-- MAGIC Warehouse** (SQL).
 -- MAGIC
--- MAGIC This notebook (1) explores that live catalog, then (2) **lands all 9 tables into `silverline.bronze`**
--- MAGIC as Delta via **CTAS (full snapshot)**. Run on the **Starter Warehouse** (SQL).
--- MAGIC
--- MAGIC > 🧭 **Stage 7 shows three ways to bring Lakebase into bronze** — run them in order:
--- MAGIC > 1. **`07.1_ctas_snapshot`** (this) — full-refresh overwrite. Simplest; the baseline.
--- MAGIC > 2. **`07.2_lakehouse_sync`** — the *managed* Postgres→Delta CDC (Lakehouse Sync); reference + evidence.
--- MAGIC > 3. **`07.3_watermark_cdc`** — a *custom* incremental CDC by `updated_at` watermark (snapshot-then-incremental).
+-- MAGIC > 🧭 **Why copy at all, when `07.1` already queries it natively?** For a **governed Delta bronze** —
+-- MAGIC > history + time-travel, decoupling analytics from the live OLTP, and a stable base the **medallion**
+-- MAGIC > (stage 08) builds on. The four materialization patterns: **`07.2`** CTAS (this) · **`07.3`** watermark
+-- MAGIC > CDC · **`07.4`** WAL CDC · **`07.5`** Lakebase CDF.
 -- MAGIC >
 -- MAGIC > 💚 **Cost:** quota only — a handful of `CREATE OR REPLACE TABLE AS SELECT` on serverless.
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## 1 — Query the registered Lakebase catalog directly
--- MAGIC This is the native UC window into Postgres (the same queries `05.2_data_model` deferred to this stage).
-
--- COMMAND ----------
-
-SELECT 'customers' AS table_name, count(*) AS rows FROM lakebase_silverline_oltp.public.customers
-UNION ALL SELECT 'contracts', count(*) FROM lakebase_silverline_oltp.public.contracts
-UNION ALL SELECT 'invoices',  count(*) FROM lakebase_silverline_oltp.public.invoices
-ORDER BY table_name;
-
--- COMMAND ----------
-
--- Principal financed by segment, straight from the live OLTP catalog
-SELECT c.segment, count(*) AS contracts, round(sum(co.principal)) AS principal_financed
-FROM lakebase_silverline_oltp.public.customers c
-JOIN lakebase_silverline_oltp.public.contracts co USING (customer_id)
-GROUP BY c.segment
-ORDER BY principal_financed DESC;
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ## 2 — Land all 9 tables into `silverline.bronze` (CTAS)
+-- MAGIC ## 1 — Land all 9 tables into `silverline.bronze` (CTAS)
 -- MAGIC
 -- MAGIC **What is CTAS?** `CREATE TABLE AS SELECT` — one statement that **creates a new table _and_ fills it
 -- MAGIC with a query's result**, inferring columns + types from the `SELECT`:
@@ -74,7 +51,7 @@ CREATE OR REPLACE TABLE silverline.bronze.payments         AS SELECT * FROM lake
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## 3 — Verify bronze
+-- MAGIC ## 2 — Verify bronze
 -- MAGIC Expect the medallion's three sources: customers 60 / contracts 85 / invoices 1452.
 
 -- COMMAND ----------
@@ -133,17 +110,13 @@ ORDER BY t;
 -- MAGIC by overwrite, but Delta **time travel** retains prior table *versions* (`VERSION AS OF`). True row-level
 -- MAGIC change history needs CDC/append — that's the `refresh` stage (09) + the streaming/CDC sibling tutorial.
 -- MAGIC
--- MAGIC The **managed production mechanism** is a Lakebase **synced table** (auto Lakebase→Delta on separate
--- MAGIC serverless sync compute — no hand-rolled reverse-ETL):
--- MAGIC ```bash
--- MAGIC databricks database create-synced-database-table \
--- MAGIC   silverline.bronze.customers_synced \
--- MAGIC   --json '{"database_instance_name":"silverline-oltp", ...}'   # continuous | triggered | snapshot
--- MAGIC ```
--- MAGIC We use CTAS so `refresh` can re-run an explicit, inspectable step.
+-- MAGIC The **managed production mechanism** for Postgres→Delta is **Lakebase CDF** (`07.5`): the `wal2delta`
+-- MAGIC extension streams every insert/update/**delete** into `lb_<table>_history` Delta tables, no code. (Don't
+-- MAGIC confuse it with a **synced table**, which goes the *other* way — Delta→Postgres, to serve apps; see `07.1`
+-- MAGIC §3.) We use CTAS here so `refresh` can re-run an explicit, inspectable step.
 -- MAGIC
 -- MAGIC 📄 [Full / incremental / change-only loads](https://medium.com/@jithujosekokken/understanding-data-patterns-in-medallion-architecture-full-incremental-and-change-only-loads-e33db28e51f4)
--- MAGIC · [Lakebase synced tables / OLTP→Delta](https://qubika.com/blog/oltp-lakehouse-databricks-lakebase/)
+-- MAGIC · [Lakebase OLTP → lakehouse](https://qubika.com/blog/oltp-lakehouse-databricks-lakebase/)
 
 -- COMMAND ----------
 
