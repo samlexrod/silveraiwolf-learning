@@ -30,10 +30,11 @@ is added as more stages in the same plugin.
 
 ---
 
-## Why the medallion is built two ways (dbt vs native Databricks Workflows)
+## Why the medallion is built three ways (notebook · dbt · SDP)
 
-The `medallion` stage builds the same gold with **dbt** and with a **native Databricks** path (SDP +
-Jobs/notebooks) and proves parity — to teach an **honest trade-off**, not "dbt is bad":
+The `medallion` stage builds the same gold **three ways** — a **notebook** Job (`08.4`), **dbt** (`08.2`), and a
+declarative **SDP** pipeline (`08.3`) — and proves **3-way parity** (`08.5`). The notebook + SDP are the two
+**native Databricks** paths; comparing them against dbt teaches an **honest trade-off**, not "dbt is bad":
 
 - **Not capability.** Both do SQL *and* PySpark (dbt via Python models). Don't claim dbt "can't" do the
   imperative RAG work — it can; the difference is below.
@@ -96,7 +97,7 @@ author/reference catalog. Legend: ☐ to build · ◐ in progress · ✅ built.
 | ----- | ------------------------------------------ | ------- | ------------------------------ | ------ |
 | **Setup** (1–3) | `connect` · `landing-zone` · `project` | signup, CLI/OAuth, UC catalog, mise/dbt — the shared prereq every later stage assumes | environment-setup (trimmed) | ◐ authored — awaiting live verify (+ the mise/uv/dbt scaffold) |
 | **Lakebase** (4–6) | `provision` · `seed` · `data-api` | serverless **Postgres 17** OLTP source + structured seed **+ unstructured docs** (contract PDFs / credit memos → the UC volume, for the agents phase's Vector Search) + **Data API (REST)** | `generate_mock_data` | ◐ authored — awaiting live verify (lakebase_seed.py + generate_contract_docs.py); verify credential-mint, volume upload, Data-API URL/auth in-workspace |
-| **Lakehouse** (7–9) | `ingest` · `medallion` · `refresh` | register Lakebase in UC (native) → **bronze**, **medallion dbt vs SDP + parity**, then edit-source→re-run→verify (honest batch refresh, NOT CDC — real CDC is the streaming tutorial) | dbt models + SDP/notebook extraction + parity | ◐ authored — awaiting live verify (+ dbt silver/gold + medallion.py SDP + lakebase_simulate.py); verify native Lakebase UC-registration + SDP pipeline create |
+| **Lakehouse** (7–9) | `ingest` · `medallion` · `refresh` | register Lakebase in UC (native) → **bronze**, **medallion 3 ways (notebook/dbt/SDP) + parity**, then edit-source→re-run→verify (honest batch refresh, NOT CDC — real CDC is the streaming tutorial) | dbt models + SDP/notebook extraction + parity | ◐ authored — awaiting live verify (+ dbt silver/gold + medallion.py SDP + lakebase_simulate.py); verify native Lakebase UC-registration + SDP pipeline create |
 | **Analytics** (10–12) | `business-layer` · `semantic` · `ai-bi` | govern gold, **Metric Views** (semantic), **AI/BI + Genie** | expose_business_layer, invoice_metrics, genie_ask | ◐ authored — awaiting live verify (+ sql/invoice_metrics.sql); verify Metric View DDL + Genie create on FE |
 | **ML** (planned) | — | **MLflow** tracking, feature engineering, train → register (UC) → **serve** a model | — (new) | ☐ |
 | **Agents** (planned) | — | **RAG/Vector Search** over the contract PDFs/memos **already landed in the volume by the `seed` stage** (parse → embed → index) + the **consumption ladder** (SQL→SDK→UC-tool→Mosaic-AI agent→agent+Genie→eval/app) → handoff to `silver-databricks-agents` | `rag_retrieval.py` + extraction + genie tool | ☐ |

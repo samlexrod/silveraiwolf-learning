@@ -119,8 +119,9 @@ picture before deciding what to do. Render it verbatim-ish:
 >   **credit-memo** files, landed in a Unity Catalog **volume**.
 >
 > ## What you'll do with it
-> Take the **structured** source through a governed **medallion** (bronze → silver → gold) — built **two ways**
-> (dbt *and* a declarative SDP pipeline) and proven identical — then expose it as a **semantic layer** +
+> Take the **structured** source through a governed **medallion** (bronze → silver → gold) — built **three ways**
+> (a **notebook** Job, **dbt**, and a declarative **SDP** pipeline) and proven identical with a 3-way parity check —
+> then expose it as a **semantic layer** +
 > **AI/BI dashboards** + a **Genie** space for natural-language Q&A. The **unstructured** documents are landed
 > now in the volume as the foundation for a later **`agents`** phase that embeds them for **Vector Search**
 > (RAG) and joins those hits back to the structured tables.
@@ -129,7 +130,7 @@ picture before deciding what to do. Render it verbatim-ish:
 > - Authenticate the Databricks **CLI** (user OAuth) and wire a local **dbt / mise / uv** project on Free Edition.
 > - Stand up a serverless **Lakebase Postgres** OLTP, seed it, and expose a one-click **REST Data API**.
 > - Land an operational source **natively into Unity Catalog** (not Lakehouse Federation) and build a
->   **medallion** — comparing **dbt vs a declarative SDP pipeline** with a parity check.
+>   **medallion** — comparing **a notebook Job vs dbt vs a declarative SDP pipeline** with a 3-way parity check.
 > - Refresh from a changed source and **verify lineage** (source → gold).
 > - Govern a **gold business layer**, define a **Metric View** (one governed definition every consumer shares),
 >   and serve it through **AI/BI + Genie**.
@@ -146,8 +147,8 @@ picture before deciding what to do. Render it verbatim-ish:
 > - **Setup** (1–3): `connect · landing-zone · project` — CLI/OAuth, a Unity Catalog landing zone, dbt/mise.
 > - **Lakebase** (4–6): `provision · seed · data-api` — stand up the OLTP, seed **structured + unstructured**
 >   data, expose a REST Data API.
-> - **Lakehouse** (7–9): `ingest · medallion · refresh` — land to bronze, build the medallion **two ways**
->   (dbt vs SDP) with parity, then edit the source and refresh to watch the change reach gold.
+> - **Lakehouse** (7–9): `ingest · medallion · refresh` — land to bronze, build the medallion **three ways**
+>   (notebook · dbt · SDP) with a 3-way parity check, then edit the source and refresh to watch the change reach gold.
 > - **Analytics** (10–12): `business-layer · semantic · ai-bi` — govern gold, a Metric View semantic layer,
 >   then AI/BI dashboards + a Genie space for NL Q&A.
 >
