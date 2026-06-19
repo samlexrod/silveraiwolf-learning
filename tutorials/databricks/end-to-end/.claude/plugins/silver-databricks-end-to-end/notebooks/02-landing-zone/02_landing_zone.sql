@@ -77,15 +77,16 @@ DESCRIBE VOLUME silverline.bronze.files;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## 4 — (Opt-in, real $) External storage on your own cloud
--- MAGIC Everything above is **managed** + free. This section is **optional** and **bills your own AWS account**
--- MAGIC (not Free Edition quota) — do it only to *see* external tables/volumes, or to enable the optional **CDF**
--- MAGIC step in `ingest`.
+-- MAGIC ## 4 — Managed vs external, hands-on (opt-in)
+-- MAGIC Sections 1–2 built the **managed** side (the default). Now build the **external** side so you've created
+-- MAGIC **both** — a catalog whose storage is your own cloud, an external volume, and an external table. **Opt-in**
+-- MAGIC because external = **your own S3** (billed by your cloud, not Free Edition quota); skip it and the tutorial
+-- MAGIC still runs fully on managed.
 -- MAGIC
 -- MAGIC 💳 The **AWS quickstart** runs a **CloudFormation** stack in your AWS → S3 bucket + IAM role, billed by AWS.
 -- MAGIC `cleanup` drops the Databricks objects but **not** your AWS resources (delete that stack yourself).
 -- MAGIC
--- MAGIC **Create the external location (UI):** Catalog → External Data → External Locations → **Create → AWS
+-- MAGIC **Register the external location (UI):** Catalog → External Data → External Locations → **Create → AWS
 -- MAGIC quickstart** → approve the CloudFormation stack; it registers the location + storage credential in UC.
 -- MAGIC Then replace `<your-bucket>` below and run the cells. *(Manual SQL alt: `CREATE STORAGE CREDENTIAL …` +
 -- MAGIC `CREATE EXTERNAL LOCATION … URL 's3://<your-bucket>/…' WITH (STORAGE CREDENTIAL …)`.)*
@@ -98,8 +99,17 @@ SHOW EXTERNAL LOCATIONS;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ⚠️ **Edit `<your-bucket>`** in the two statements below to YOUR external-location bucket, then run them.
+-- MAGIC ⚠️ **Edit `<your-bucket>`** in the statements below to YOUR external-location bucket, then run them.
 -- MAGIC They error until the external location above exists — expected if you skipped the quickstart.
+
+-- COMMAND ----------
+
+-- A managed catalog vs an external-storage-backed catalog: silverline (above) is managed (metastore default
+-- storage); this catalog's MANAGED objects store data on YOUR S3. Both are managed (drop → data deleted) —
+-- they differ only in WHERE the bytes live.
+CREATE CATALOG IF NOT EXISTS silverline_ext
+  MANAGED LOCATION 's3://<your-bucket>/silverline_ext'
+  COMMENT 'Managed objects, stored on your own S3 — vs silverline (metastore default storage).';
 
 -- COMMAND ----------
 
@@ -117,12 +127,11 @@ CREATE TABLE IF NOT EXISTS silverline.bronze.ext_demo (id INT, note STRING)
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC 🔗 **This same external location backs the optional CDF step** (`07.5_lakebase_cdf`). CDF's `lb_*_history`
--- MAGIC tables are **managed**, but Free Edition won't let them use its *default* storage — so the catalog
--- MAGIC `silverline_cdf` is created with its **managed-storage root on this external location**:
--- MAGIC `CREATE CATALOG silverline_cdf MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`. (`MANAGED LOCATION` =
--- MAGIC where a catalog's *managed* objects store data — here, your own S3: managed objects on external storage,
--- MAGIC **not** an external table.) Set the external location up once here → CDF reuses it.
+-- MAGIC 🔗 **The `ingest` CDF step uses this exact pattern.** CDF writes its `lb_*_history` tables as **managed**
+-- MAGIC objects, but **requires the destination catalog's managed storage on an external location** (a CDF
+-- MAGIC requirement, any edition) — so `07.5` creates `silverline_cdf` with
+-- MAGIC `MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`, the same shape as `silverline_ext` above. Register
+-- MAGIC the external location once here → CDF reuses it.
 
 -- COMMAND ----------
 

@@ -32,9 +32,10 @@ display(spark.sql("SHOW EXTERNAL LOCATIONS"))
 # COMMAND ----------
 
 # MAGIC %md ## 2 — Create the destination catalog (managed storage on your external location)
-# MAGIC CDF's `lb_*_history` tables are **managed**, but can't use Free Edition's *default* storage — so this
-# MAGIC catalog's **managed-storage root** is set to a path on your external location via `MANAGED LOCATION`
-# MAGIC (managed objects, stored on your own S3 — not external tables). Set `CDF_LOCATION` to YOUR path, then run.
+# MAGIC CDF's `lb_*_history` tables are **managed**, but CDF **requires the destination catalog's managed storage
+# MAGIC on an external location** (a CDF requirement, any edition) — so this catalog's **managed-storage root** is
+# MAGIC set to a path on your external location via `MANAGED LOCATION` (managed objects on your own S3 — the same
+# MAGIC `silverline_ext`-style pattern from `landing-zone` Section 4, not external tables). Set `CDF_LOCATION`, then run.
 
 # COMMAND ----------
 

@@ -41,7 +41,8 @@ CREATE SCHEMA IF NOT EXISTS silverline.gold   COMMENT 'Business / serving';
 
 ## Section 2 — Create the managed volume (for seed data + PDFs)
 
-Free Edition has **no external storage** — use a **managed** UC volume (Databricks-managed storage):
+Create a **managed** UC volume (Databricks-managed storage — the zero-setup default). You'll build its
+**external** counterpart hands-on in Section 4:
 
 ```sql
 CREATE VOLUME IF NOT EXISTS silverline.bronze.files
@@ -60,13 +61,13 @@ CREATE VOLUME IF NOT EXISTS silverline.bronze.files
 > | Data files | Databricks-managed | your cloud bucket (`LOCATION '…'`) |
 > | Drop the object | files **deleted** | files **kept** |
 > | Setup needed | none | external location + storage credential |
-> | Free Edition | ✅ default (no setup) | ⚠️ opt-in via the AWS quickstart (your cloud, $) |
+> | Where the bytes live | Databricks default | your own cloud bucket |
 >
-> On **Free Edition** there's no *built-in* external storage, so the tutorial stays **managed** throughout
-> (this volume + every medallion **table** later). But external **is** possible: register an **external
-> location** (e.g. the **AWS quickstart** → your own S3 bucket) + a storage credential, and external
-> **tables and volumes** both become available — billed to **your** cloud account (real $), so it's opt-in.
-> The optional **CDF** step in `ingest` is just one example that uses such an external-storage catalog.
+> **The choice is yours at every level** — catalog, schema, table, and volume. This tutorial uses **managed**
+> by default (zero setup, no cloud account) for this volume + every medallion **table** later. **Section 4**
+> then builds the **external** side hands-on — a catalog whose storage is your own cloud, plus external
+> tables/volumes — so you've created **both**, the way you'd choose in production. (External storage = your own
+> S3 via an external location, billed by your cloud — opt-in.) The optional **CDF** step reuses that location.
 
 **Pause.** Confirm the volume exists (`DESCRIBE VOLUME silverline.bronze.files`) (render as `AskUserQuestion`).
 
@@ -92,15 +93,17 @@ databricks --profile free api post /api/2.0/sql/statements \
 
 ---
 
-## Section 4 — (Opt-in, real $) External storage on your own cloud
+## Section 4 — Managed vs external, hands-on (opt-in)
 
-Everything above is **managed** and free. This section is **optional** and **costs real money** — it provisions
-an **S3 bucket + IAM role in YOUR own AWS account** (not Free Edition quota). Do it only if you want to *see*
-external tables/volumes, or you plan to run the optional **CDF** step in `ingest` (which requires it).
+Sections 1–2 built the **managed** side (the default — no cloud account, nothing to provision). Now build the
+**external** side so you've created **both**, the way you'd actually choose in production: a **catalog** whose
+storage is your own cloud, an external **volume**, and an external **table**. It's **opt-in** because external
+storage means **your own S3** (billed by your cloud, not Free Edition quota) — skip it and the tutorial still
+runs fully on managed.
 
-> 💳 **Cost + ownership.** The **AWS quickstart** runs a **CloudFormation** stack in your AWS account → creates
-> an S3 bucket + IAM role, billed by **AWS**. The tutorial's `cleanup` drops the Databricks objects but **not**
-> your AWS resources — you delete that CloudFormation stack yourself.
+> 💳 **External = your cloud = your bill.** Registering the external location runs an **AWS quickstart**
+> (CloudFormation) in your AWS account → an S3 bucket + IAM role, billed by **AWS**. The tutorial's `cleanup`
+> drops the Databricks objects but **not** your AWS resources — delete that CloudFormation stack yourself.
 
 **1. Create the external location** (UI — the quickstart auto-registers the location + storage credential):
 - Databricks UI → **Catalog → External Data → External Locations → Create → AWS quickstart**.
@@ -113,35 +116,46 @@ external tables/volumes, or you plan to run the optional **CDF** step in `ingest
 > ```sql
 > CREATE STORAGE CREDENTIAL IF NOT EXISTS silverline_cred
 >   WITH (AWS_IAM_ROLE 'arn:aws:iam::<acct-id>:role/<role-name>');
-> CREATE EXTERNAL LOCATION IF NOT EXISTS silverline_ext
+> CREATE EXTERNAL LOCATION IF NOT EXISTS silverline_ext_loc
 >   URL 's3://<your-bucket>/silverline' WITH (STORAGE CREDENTIAL silverline_cred);
 > ```
 
-**2. An external volume** — files live in *your* bucket; drop → files **kept**:
+**2. A managed catalog vs an external-storage-backed catalog.** You already have `silverline` — a **managed
+catalog** (no location given, so its managed objects use the metastore's default storage). Now create one whose
+**managed-storage root is your own cloud**:
+```sql
+CREATE CATALOG IF NOT EXISTS silverline_ext
+  MANAGED LOCATION 's3://<your-bucket>/silverline_ext'
+  COMMENT 'Managed objects, stored on your own S3 — vs silverline (metastore default storage).';
+```
+> 🧠 `MANAGED LOCATION` sets **where a catalog's managed objects store their data**. *Both* catalogs hold
+> **managed** objects (drop → data deleted); they differ only in **where** the bytes live — `silverline` uses
+> Databricks default storage, `silverline_ext` uses your S3.
+
+**3. An external volume** — the *unmanaged-data* side: UC owns only the metadata, the files are yours
+(drop → files **kept**):
 ```sql
 CREATE EXTERNAL VOLUME IF NOT EXISTS silverline.bronze.ext_files
   LOCATION 's3://<your-bucket>/ext_files'
-  COMMENT 'External volume on your own S3 — contrast with the managed silverline.bronze.files.';
+  COMMENT 'External volume — contrast with the managed silverline.bronze.files.';
 ```
 
-**3. An external table** — vs the managed default:
+**4. An external table** — same for tabular data (drop → files **kept**), vs a managed table (drop → deleted):
 ```sql
 CREATE TABLE IF NOT EXISTS silverline.bronze.ext_demo (id INT, note STRING)
   USING DELTA LOCATION 's3://<your-bucket>/ext_demo';
 -- Managed equivalent (UC picks the location): CREATE TABLE silverline.bronze.demo (id INT, note STRING);
--- Drop the EXTERNAL table → s3://…/ext_demo files STAY in your bucket; drop a MANAGED table → files deleted.
 ```
 
-**4. Reused by the CDF step.** This **same external location** is the prerequisite for the optional **Lakebase
-CDF** path in `ingest` (`07.5`). A subtlety worth knowing: CDF's `lb_*_history` tables are **managed**, but
-Free Edition won't let them use its *default* storage for CDF — so the destination catalog `silverline_cdf` is
-created with its **managed-storage root pointed at this external location**:
-`CREATE CATALOG silverline_cdf MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`. `MANAGED LOCATION` sets
-*where a catalog's managed objects store their data* — here, your own S3. So it's **managed objects living on
-external storage** (not an external table). Set the external location up once here and CDF reuses it.
+> 🔗 **The `ingest` CDF step uses this exact pattern.** CDF writes its `lb_*_history` tables as **managed**
+> objects, but **requires the destination catalog's managed storage to sit on an external location** (a CDF
+> requirement, any edition) — so `07.5` creates `silverline_cdf` with
+> `MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`, the same shape as `silverline_ext` above. Register the
+> external location once here and CDF reuses it.
 
-**Pause.** If you opted in: confirm `SHOW EXTERNAL LOCATIONS` lists your location and the external volume/table
-resolve. If you skipped it: fine — the tutorial runs fully on managed storage (render as `AskUserQuestion`).
+**Pause.** If you opted in: confirm `SHOW EXTERNAL LOCATIONS`, the `silverline_ext` catalog, and the external
+volume/table all resolve — you've now built managed **and** external. If you skipped it: fine, the tutorial
+runs fully on managed (render as `AskUserQuestion`).
 
 ---
 
@@ -151,6 +165,6 @@ resolve. If you skipped it: fine — the tutorial runs fully on managed storage 
 - ✓ Schemas **`bronze` / `silver` / `gold`** (the medallion)
 - ✓ Managed volume **`silverline.bronze.files`** (`/Volumes/silverline/bronze/files/`) — managed storage, no cloud setup
 - ✓ Verified via `SHOW SCHEMAS` / `SHOW VOLUMES`
-- ◻️ *(Optional)* External location + external table/volume on **your own cloud** — opt-in, real $, and reused by the `ingest` CDF step
+- ◻️ *(Optional, Section 4)* The **external** side — an external location + an external-storage-backed catalog (`silverline_ext`) + an external volume/table on **your own cloud**, so you've built **managed and external both** (opt-in; your cloud's $; reused by the `ingest` CDF step)
 
 **Cost now:** $0 — free UC objects + a few-second query (unless you opted into the external-storage section, which bills to your AWS).
