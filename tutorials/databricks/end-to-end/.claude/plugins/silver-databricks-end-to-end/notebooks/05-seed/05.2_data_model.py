@@ -34,7 +34,8 @@
 # MAGIC | `invoices` | `contract_id`, `schedule_id` | `contracts`, `payment_schedule` | each elapsed period is **billed** as an invoice |
 # MAGIC | `payments` | `invoice_id` | `invoices` | cash received is applied against an invoice |
 # MAGIC
-# MAGIC The same model as a diagram (`||--o{` = one-to-many, `||--o|` = one-to-(zero/one)) — rendered from `erd.mmd` via mermaid.ink:
+# MAGIC The same relationships as an **entity-relationship diagram** — in crow's-foot notation, the forked
+# MAGIC ("many") end touches the child table and the single bar ("one") end touches the parent:
 # MAGIC
 # MAGIC ![Silverline Capital — ER diagram](https://mermaid.ink/svg/ZXJEaWFncmFtCiAgY3VzdG9tZXJzIHx8LS1veyBhcHBsaWNhdGlvbnMgOiBzdWJtaXRzCiAgdmVuZG9ycyB8fC0tb3sgYXBwbGljYXRpb25zIDogIm5hbWVkIGluIgogIGFwcGxpY2F0aW9ucyB8fC0tb3wgY29udHJhY3RzIDogImJvb2tlZCBpbnRvIgogIGN1c3RvbWVycyB8fC0tb3sgY29udHJhY3RzIDogaG9sZHMKICB2ZW5kb3JzIHx8LS1veyBlcXVpcG1lbnQgOiBzdXBwbGllcwogIGNvbnRyYWN0cyB8fC0tb3sgY29udHJhY3RfYXNzZXRzIDogImJhY2tlZCBieSIKICBlcXVpcG1lbnQgfHwtLW97IGNvbnRyYWN0X2Fzc2V0cyA6ICJhbGxvY2F0ZWQgaW4iCiAgY29udHJhY3RzIHx8LS1veyBwYXltZW50X3NjaGVkdWxlIDogImFtb3J0aXplZCBhcyIKICBjb250cmFjdHMgfHwtLW97IGludm9pY2VzIDogImJpbGxlZCB2aWEiCiAgcGF5bWVudF9zY2hlZHVsZSB8fC0tb3wgaW52b2ljZXMgOiAiZm9yIHBlcmlvZCIKICBpbnZvaWNlcyB8fC0tb3sgcGF5bWVudHMgOiAic2V0dGxlZCBieSIK)
 # MAGIC
