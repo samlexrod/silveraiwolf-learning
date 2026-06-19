@@ -49,6 +49,23 @@ CREATE VOLUME IF NOT EXISTS silverline.bronze.files
 -- files land under:  /Volumes/silverline/bronze/files/
 ```
 
+> 🧠 **Managed vs external — who owns the storage** (the same axis applies to **volumes and tables**):
+> - **Managed** — Unity Catalog owns the metadata **and** the data files, in Databricks-managed storage. UC
+>   picks the location and the lifecycle follows the object: **drop it → the files are deleted.** No cloud setup.
+> - **External** — UC owns only the metadata; the data lives at a `LOCATION` you give in **your own cloud
+>   bucket** (S3/ADLS/GCS) via an *external location* + *storage credential*: **drop it → the files stay.**
+>
+> | | Managed | External |
+> |---|---|---|
+> | Data files | Databricks-managed | your cloud bucket (`LOCATION '…'`) |
+> | Drop the object | files **deleted** | files **kept** |
+> | Setup needed | none | external location + storage credential |
+> | Free Edition | ✅ the only option | ❌ needs the AWS quickstart (real $) |
+>
+> On **Free Edition** there's no external storage, so this volume — and every medallion **table** you build
+> later — is **managed**. The lone exception is the optional **CDF** step in `ingest`, which needs an
+> external-storage catalog from the AWS quickstart (billed to *your* AWS — opt-in).
+
 **Pause.** Confirm the volume exists (`DESCRIBE VOLUME silverline.bronze.files`) (render as `AskUserQuestion`).
 
 ---

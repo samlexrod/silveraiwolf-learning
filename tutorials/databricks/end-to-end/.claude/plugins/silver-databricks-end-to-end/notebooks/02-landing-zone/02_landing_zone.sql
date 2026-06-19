@@ -30,8 +30,24 @@ CREATE SCHEMA IF NOT EXISTS silverline.gold   COMMENT 'Business / serving';
 
 -- MAGIC %md
 -- MAGIC ## 2 — Managed volume (seed files + contract PDFs)
--- MAGIC Free Edition has **no external storage**, so use a **managed** volume (Databricks-managed storage).
 -- MAGIC Files will land under `/Volumes/silverline/bronze/files/`.
+-- MAGIC
+-- MAGIC 🧠 **Managed vs external — who owns the storage** (the same axis applies to **volumes and tables**):
+-- MAGIC - **Managed** — Unity Catalog owns the metadata **and** the data files, in Databricks-managed storage;
+-- MAGIC   UC picks the location and the lifecycle follows the object: **drop it → the files are deleted.** No cloud setup.
+-- MAGIC - **External** — UC owns only the metadata; data lives at a `LOCATION` in **your own cloud bucket**
+-- MAGIC   (S3/ADLS/GCS) via an external location + storage credential: **drop it → the files stay.**
+-- MAGIC
+-- MAGIC | | Managed | External |
+-- MAGIC |---|---|---|
+-- MAGIC | Data files | Databricks-managed | your cloud bucket (`LOCATION '…'`) |
+-- MAGIC | Drop the object | files **deleted** | files **kept** |
+-- MAGIC | Setup needed | none | external location + storage credential |
+-- MAGIC | Free Edition | ✅ the only option | ❌ needs the AWS quickstart (real $) |
+-- MAGIC
+-- MAGIC On **Free Edition** there's no external storage, so this volume — and every medallion **table** you
+-- MAGIC build later — is **managed**. The one exception is the optional **CDF** step in `ingest` (external-storage
+-- MAGIC catalog via the AWS quickstart, billed to *your* AWS — opt-in).
 
 -- COMMAND ----------
 
