@@ -12,7 +12,7 @@ applications from business customers, books them into lease/loan **contracts** b
 **equipment**, then bills and collects on a monthly schedule. In this stage you seed **both** of its
 operational sources:
 
-- **Structured** — the **full 9-table OLTP** in **Lakebase** (Postgres 16), filled with **deterministic**
+- **Structured** — the **full 9-table OLTP** in **Lakebase** (Postgres 17), filled with **deterministic**
   mock data, so every downstream phase (lakehouse, medallion, analytics) has a real source to pull from.
 - **Unstructured** — Silverline's **documents**: a lease/loan **agreement PDF** per contract (plus a few
   **credit-memo** files), generated from the same seed data and landed in the Unity Catalog **volume**
@@ -77,15 +77,14 @@ Run **`SilverAIWolf/05-seed/05.1_seed_oltp`** in the workspace (serverless, **Ru
 in-workspace — no shell, no token to paste:
 
 1. `%pip install "psycopg[binary]" "databricks-sdk>=0.61.0"` + `restartPython()`.
-2. **Mints a credential via the SDK** using the notebook's own identity — the *documented Lakebase pattern*:
-   `w.database.get_database_instance(...)` for the host + `w.database.generate_database_credential(...)` for
-   the short-lived OAuth token (the Postgres password).
+2. **Mints a credential via the SDK** using the notebook's own identity — the *documented Lakebase pattern*
+   for an Autoscaling project: `w.postgres.get_endpoint(...)` for the host +
+   `w.postgres.generate_database_credential(...)` for the short-lived OAuth token (the Postgres password).
 3. Builds the **deterministic** dataset (`MOCK_SEED=42` → identical rows) and seeds via `psycopg` over SSL.
 
-> ⚠️ **SDK version matters.** The typed `w.database` service needs **databricks-sdk ≥ 0.61.0**; serverless
-> ships an older one, so the notebook upgrades it in cell 1. Without that you'd hit
-> `AttributeError: 'WorkspaceClient' object has no attribute 'database'`. (Ref: Databricks "Use a notebook
-> to access a database instance".)
+> ⚠️ **SDK version matters.** The `w.postgres` service (Autoscaling projects) needs a **current
+> `databricks-sdk`**; serverless ships an older one, so the notebook upgrades it in cell 1. Without that
+> you'd hit `AttributeError: 'WorkspaceClient' object has no attribute 'postgres'`.
 
 Expected final output:
 
@@ -101,9 +100,8 @@ and only periods elapsed as of the `2026-06-01` snapshot produce `invoices` (and
 > these to demonstrate change propagation.)
 >
 > 🛠️ **Local fallback** (if you'd rather not use the notebook): `export PGPASSWORD="$(databricks --profile
-> free database generate-database-credential --request-id "$(uuidgen)" --json
-> '{"instance_names":["silverline-oltp"]}' | jq -r '.token')"` then `mise run lakebase:seed`
-> (`scripts/lakebase_seed.py`, same logic).
+> free postgres generate-database-credential projects/silverline-oltp/branches/production/endpoints/primary \
+> | jq -r '.token')"` then `mise run lakebase:seed` (`scripts/lakebase_seed.py`, same logic).
 
 **Pause.** Confirm the seed reported the 9 counts above — especially `customers=60` and `contracts=85`
 (render as `AskUserQuestion`).
@@ -159,7 +157,7 @@ Verify by browsing **Catalog → silverline → bronze → files**, or the noteb
 
 ## Recap
 
-- ✓ Silverline Capital's **9-table OLTP** created in **Lakebase Postgres 16** and seeded (customers 60 · vendors 15 · equipment 220 · applications 140 · contracts 85 · contract_assets 180 · payment_schedule 2904 · invoices 1452 · payments 1291)
+- ✓ Silverline Capital's **9-table OLTP** created in **Lakebase Postgres 17** and seeded (customers 60 · vendors 15 · equipment 220 · applications 140 · contracts 85 · contract_assets 180 · payment_schedule 2904 · invoices 1452 · payments 1291)
 - ✓ **Deterministic + idempotent** — same `MOCK_SEED` → identical rows
 - ✓ Seeded + explored from **notebooks** (`05.1_seed_oltp` → `05.2_data_model`) via the documented Lakebase psycopg pattern
 - ✓ **Unstructured docs landed** — contract PDFs + credit memos in the volume `silverline.bronze.files` (the source for the later `agents` phase's Vector Search), written by `05.3_documents`

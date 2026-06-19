@@ -13,7 +13,8 @@ The application model (9 tables, full origination → booking → billing → pa
 Connection (from `.env` via mise + a minted credential):
   LAKEBASE_HOST, LAKEBASE_DB (default databricks_postgres), LAKEBASE_USER (your email)
   PGPASSWORD = the short-lived Lakebase OAuth token (mint it: Connect dialog, or
-               `databricks --profile free database generate-database-credential ...`)
+               `databricks --profile free postgres generate-database-credential \
+                projects/silverline-oltp/branches/production/endpoints/primary | jq -r .token`)
 
 Usage:  export PGPASSWORD="<token>" ;  mise run lakebase:seed
 """

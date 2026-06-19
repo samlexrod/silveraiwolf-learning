@@ -7,9 +7,9 @@
 -- MAGIC (every insert/update/**delete**, `_pg_change_type` + LSN + xid + timestamp), flushed ~15s.
 -- MAGIC
 -- MAGIC > ✅ **It's a real feature, surfaced in your Lakebase project (Change Data Feed tab → Start).** The
--- MAGIC > hands-on walkthrough is **`07.5_lakebase_cdf`**. ⚠️ On **Free Edition** it needs **PG17** + a
--- MAGIC > **non-default-storage** destination catalog — Free Edition gives PG16 + default-storage, so it may not
--- MAGIC > stream; `07.4_wal_cdc` is the runnable Free-Edition equivalent (same WAL decoding, by hand).
+-- MAGIC > hands-on walkthrough is **`07.5_lakebase_cdf`**. It needs **PG17** (the tutorial provisions PG17) + a
+-- MAGIC > **non-default-storage** destination catalog (the opt-in external location from `landing-zone`). With
+-- MAGIC > both, CDF streams; `07.4_wal_cdc` is the no-cost Free-Edition equivalent (same WAL decoding, by hand).
 -- MAGIC >
 -- MAGIC > *(Earlier this notebook called it "Lakehouse Sync / private preview, no CLI" — that was imprecise;
 -- MAGIC > the actual feature is Lakebase CDF. See `07.5`.)*

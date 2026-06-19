@@ -52,9 +52,9 @@
 
 # MAGIC %md
 # MAGIC ## Live exploration — connect to the seeded Postgres
-# MAGIC The official Lakebase-from-notebook pattern: upgrade the SDK (the typed `w.database` service needs
-# MAGIC **databricks-sdk ≥ 0.61.0**), install `psycopg`, mint a credential via the SDK (you, no token to
-# MAGIC paste), connect over SSL.
+# MAGIC The official Lakebase-from-notebook pattern: upgrade the SDK (the `w.postgres` service for Autoscaling
+# MAGIC projects needs a **current `databricks-sdk`**), install `psycopg`, mint a credential via the SDK (you,
+# MAGIC no token to paste), connect over SSL.
 
 # COMMAND ----------
 

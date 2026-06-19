@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Stage 5 — Seed the Silverline Capital OLTP (from this notebook)
 # MAGIC
-# MAGIC Loads the **9-table OLTP** into the Lakebase Postgres instance `silverline-oltp` with **deterministic**
+# MAGIC Loads the **9-table OLTP** into the Lakebase Postgres project `silverline-oltp` (PG17) with **deterministic**
 # MAGIC mock data (`MOCK_SEED=42` → identical rows every run; idempotent `TRUNCATE`+reload).
 # MAGIC
 # MAGIC This runs entirely **in your workspace**: it mints a Lakebase credential via the Databricks SDK (the
@@ -13,9 +13,10 @@
 
 # MAGIC %md
 # MAGIC ## 1 — Install the Postgres driver + a current SDK
-# MAGIC `psycopg` (v3) is the Postgres client. The typed `w.database` SDK service needs **databricks-sdk ≥
-# MAGIC 0.61.0** (the serverless runtime ships an older one), so we upgrade it here. `restartPython()` makes
-# MAGIC the freshly-installed packages importable. *(This is the official Lakebase-from-notebook pattern.)*
+# MAGIC `psycopg` (v3) is the Postgres client. The Lakebase **`w.postgres`** SDK service (Autoscaling projects)
+# MAGIC needs a **current `databricks-sdk`** — the serverless runtime ships an older one — so we upgrade it here.
+# MAGIC `restartPython()` makes the freshly-installed packages importable. *(This is the official
+# MAGIC Lakebase-from-notebook pattern.)*
 
 # COMMAND ----------
 
@@ -28,7 +29,7 @@
 # MAGIC ## 2 — Connection: mint a credential via the SDK
 # MAGIC No secrets — the SDK uses the notebook's own identity to read the endpoint and mint a short-lived
 # MAGIC OAuth token (~1h) that serves as the Postgres password. This is the documented Databricks idiom
-# MAGIC (`w.database.get_database_instance` + `generate_database_credential`).
+# MAGIC (`w.postgres.get_endpoint` + `w.postgres.generate_database_credential`).
 
 # COMMAND ----------
 

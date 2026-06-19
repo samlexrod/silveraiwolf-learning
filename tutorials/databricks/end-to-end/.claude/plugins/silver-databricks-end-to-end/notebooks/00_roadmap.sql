@@ -38,7 +38,7 @@
 -- MAGIC |-------|-------|
 -- MAGIC | Unity Catalog | `silverline` — schemas `bronze` / `silver` / `gold` |
 -- MAGIC | Managed volume | `silverline.bronze.files` (`/Volumes/silverline/bronze/files/`) |
--- MAGIC | Lakebase Postgres | instance `silverline-oltp` (PostgreSQL 16) |
+-- MAGIC | Lakebase Postgres | project `silverline-oltp` (PostgreSQL 17, Autoscaling) |
 -- MAGIC | Lakebase UC catalog | `lakebase_silverline_oltp` (registered in the `ingest` stage) |
 -- MAGIC | Auth | OAuth (the `free` CLI profile / notebook identity) — no PATs |
 -- MAGIC

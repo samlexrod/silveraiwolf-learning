@@ -34,11 +34,12 @@ import uuid, psycopg
 from databricks.sdk import WorkspaceClient
 
 INSTANCE, SLOT = "silverline-oltp", "silverline_cdc"
+ENDPOINT = "projects/silverline-oltp/branches/production/endpoints/primary"  # Autoscaling project (PG17)
 w = WorkspaceClient()
-inst = w.database.get_database_instance(name=INSTANCE)
-HOST, USER = inst.read_write_dns, w.current_user.me().user_name
-TOKEN = w.database.generate_database_credential(
-    request_id=str(uuid.uuid4()), instance_names=[INSTANCE]).token
+# Lakebase Autoscaling project (PG17) → use the `w.postgres` API (not `w.database`).
+HOST = w.postgres.get_endpoint(ENDPOINT).status.hosts.host
+USER = w.current_user.me().user_name
+TOKEN = w.postgres.generate_database_credential(ENDPOINT).token
 
 
 def pg():

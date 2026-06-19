@@ -58,7 +58,7 @@ Verified Free-Edition facts behind these (docs lag — confirmed live):
 - The `updated_at` watermark needs a **`BEFORE UPDATE` trigger** (added in provisioning on `customers`/`contracts`/`invoices`).
 - WAL: `wal_level=logical` ✅, `rolreplication` ✅, **`CREATE PUBLICATION` blocked**, but a `test_decoding` slot consumed in batch captures **deletes**. ⚠️ A logical slot **pins WAL until consumed** — 07.4 consumes + monitors + has a teardown cell.
 
-**Pause.** Confirm bronze landed — 9 CTAS tables, 3 `*_cdc` watermark logs, `cdc_changes` (WAL); and note whether CDF (07.5) streams on your PG16 instance (render as `AskUserQuestion`).
+**Pause.** Confirm bronze landed — 9 CTAS tables, 3 `*_cdc` watermark logs, `cdc_changes` (WAL); and note whether CDF (07.5) streams on your PG17 project (render as `AskUserQuestion`).
 
 ---
 
