@@ -275,3 +275,11 @@ with psycopg.connect(host=HOST, port=5432, dbname=DB, user=USER, password=TOKEN,
     for t in ORDER:
         cur.execute(f"SELECT count(*) FROM {t}")
         print(f"{t:18} {cur.fetchone()[0]}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ✅ **Seeded.** Silverline Capital's **9-table OLTP** is loaded into Lakebase `silverline-oltp` (PG17) —
+# MAGIC the counts above match (customers=60 … payments=1291), and re-running is idempotent (`TRUNCATE` + reload).
+# MAGIC Next in the **seed** stage: **`05.2_data_model`** (ERD + data dictionary, live exploration), then
+# MAGIC **`05.3_documents`** (land the contract PDFs + credit memos in the volume).
