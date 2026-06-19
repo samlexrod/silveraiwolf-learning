@@ -32,6 +32,11 @@ databricks --profile free postgres create-project silverline-oltp \
 databricks --profile free postgres list-projects -o json | jq -r '.[].name'
 ```
 
+> ⚠️ **Re-provisioning after a `cleanup`?** Lakebase **reserves a deleted project's slug** for a retention
+> window, so `create-project silverline-oltp` may fail with **`slug already exists`** even though the project
+> is gone. If so, provision under a fresh name (e.g. `silverline-oltp-2`) and use that name for the rest of the
+> run — the later stages read the project name + host from `.env`, so update those accordingly.
+
 You get a project with a **`production` branch** + a **primary** read-write endpoint and the default
 database `databricks_postgres`.
 

@@ -98,6 +98,7 @@ for c in "$LAKEBASE_UC_CATALOG" "$CDF_CATALOG" "$CATALOG"; do run "dbx catalogs 
 
 say "7/9 Lakebase project (serverless Postgres — also drops the WAL slot + triggers)"
 run "dbx postgres delete-project \"$LAKEBASE_PROJECT\""
+[ "$DRY" = 1 ] || echo "  ℹ️  Lakebase keeps the slug '$LAKEBASE_PROJECT' reserved for a retention window after delete (see the re-provisioning note below)."
 
 say "8/9 Service principal"
 for id in $(dbx service-principals list -o json 2>/dev/null | pick displayName "$SP_NAME" id); do run "dbx service-principals delete \"$id\""; done
@@ -105,9 +106,16 @@ for id in $(dbx service-principals list -o json 2>/dev/null | pick displayName "
 say "9/9 Secret scope"
 run "dbx secrets delete-scope \"$SECRET_SCOPE\""
 
-cat <<'EOF'
+cat <<EOF
 
-✅ Teardown complete — workspace should be back to its fresh $0 state (Starter Warehouse kept).
+✅ Teardown complete — workspace should be back to its fresh \$0 state (Starter Warehouse kept).
+
+⚠️ Re-provisioning the SAME Lakebase name isn't immediate. Lakebase SOFT-deletes the project and
+   RESERVES its slug ($LAKEBASE_PROJECT) for a retention window (observed several hours+). Re-running
+   the provision stage with the same name fails with "slug already exists" until the slug frees. To
+   re-provision sooner, use a different name, e.g.:
+     databricks postgres create-project ${LAKEBASE_PROJECT}-2 --json '{"spec":{"pg_version":17}}'
+   then set that name when you continue the tutorial (provision stage).
 
 ⚠️ NOT removed (outside Databricks — do these yourself):
   • If you ran the optional CDF / AWS-quickstart step, the S3 bucket + IAM role live in YOUR

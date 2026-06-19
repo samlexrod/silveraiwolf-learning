@@ -2,26 +2,29 @@
 -- MAGIC %md
 -- MAGIC # Stage 04 — provision  ·  *CLI plumbing (no UI step)*
 -- MAGIC
--- MAGIC Stood up the **Lakebase Postgres** instance — Silverline's operational (OLTP) source. Provisioning is
--- MAGIC done with the `databricks database` CLI (production = automation, not click-ops), so it's run for you.
--- MAGIC This note records what it did.
+-- MAGIC Stood up the **Lakebase Postgres** project — Silverline's operational (OLTP) source. Provisioning is
+-- MAGIC done with the `databricks postgres` CLI (the **Autoscaling project** API — production = automation, not
+-- MAGIC click-ops), so it's run for you. This note records what it did.
 -- MAGIC
 -- MAGIC ## What happened
--- MAGIC - `databricks database create-database-instance silverline-oltp --capacity CU_1` → state **AVAILABLE**.
--- MAGIC - Verified connectivity: **PostgreSQL 16.14** over SSL, using a minted OAuth token as the password.
+-- MAGIC - `databricks postgres create-project silverline-oltp --json '{"spec":{"pg_version":17}}'` → **PostgreSQL 17**.
+-- MAGIC   (The older `database create-database-instance` only gives **PG16** — avoid it; CDF needs PG17.)
+-- MAGIC - Verified connectivity over SSL, using a minted OAuth token as the password.
 -- MAGIC - Wrote non-secret connection details to the repo `.env`.
 -- MAGIC
--- MAGIC ## The instance
+-- MAGIC ## The project
 -- MAGIC | Key | Value |
 -- MAGIC |-----|-------|
--- MAGIC | Instance | `silverline-oltp` (capacity `CU_1`, autoscales/idles to ~0) |
--- MAGIC | Host | `ep-morning-paper-d8c5uvpu.database.us-east-2.cloud.databricks.com` |
+-- MAGIC | Project | `silverline-oltp` (Autoscaling, **PG17**; idles to ~0) |
+-- MAGIC | Endpoint | `projects/silverline-oltp/branches/production/endpoints/primary` |
+-- MAGIC | Host | `ep-…cloud.databricks.com` (yours — from the Lakebase **Connect** dialog / `.env`) |
 -- MAGIC | Database | `databricks_postgres` · port `5432` · sslmode `require` |
--- MAGIC | Role | `samlexrod@gmail.com` (your identity) |
+-- MAGIC | Role | `<your-databricks-email>` (your identity) |
 -- MAGIC | Password | a short-lived OAuth token (≈1h), minted on demand — **not** stored |
 -- MAGIC
--- MAGIC > Mint a token: `databricks database generate-database-credential --request-id "$(uuidgen)"
--- MAGIC > --json '{"instance_names":["silverline-oltp"]}'` — or, inside a notebook, via the SDK
--- MAGIC > (`w.database.generate_database_credential(...)`, as `05-seed/05_seed_oltp` does).
+-- MAGIC > Mint a token (CLI): `databricks postgres generate-database-credential
+-- MAGIC > projects/silverline-oltp/branches/production/endpoints/primary` → `.token`. Inside a notebook, via the
+-- MAGIC > SDK: `w.postgres.get_endpoint(endpoint)` + `w.postgres.generate_database_credential(endpoint)` (as
+-- MAGIC > `05-seed/05.1_seed_oltp` does).
 -- MAGIC
 -- MAGIC ➡️ Next: `05-seed` (load the 9-table OLTP + land the documents).
