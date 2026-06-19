@@ -1,0 +1,36 @@
+# databricks/end-to-end — shared task runner for all workload tracks.
+# Loads non-secret config from .env (host + warehouse id); the PAT comes from your shell ($DATABRICKS_TOKEN).
+[env]
+_.file = ".env"
+
+[tasks.setup]
+description = "Install Python deps with uv (dbt-databricks, sql-connector, sdk)."
+run = "uv sync"
+
+[tasks."dbt:debug"]
+description = "dbt debug — prove the profile reaches the Starter Warehouse + silverline catalog."
+run = "cd dbt && uv run dbt debug --profiles-dir ."
+
+[tasks."dbt:run"]
+description = "dbt run (pass selectors after --, e.g. mise run dbt:run -- --select tag:rag)."
+run = "cd dbt && uv run dbt run --profiles-dir . {{arg(name='args', default='')}}"
+
+[tasks.sql]
+description = "Run one SQL statement on the Starter Warehouse — mise run sql 'SELECT current_catalog()'."
+run = "uv run python scripts/run_sql.py {{arg(name='statement')}}"
+
+[tasks."lakebase:seed"]
+description = "Seed Lakebase with the Silverline Capital model (9-table equipment-finance OLTP). Needs LAKEBASE_* in .env + PGPASSWORD (minted token) in your shell."
+run = "uv run python scripts/lakebase_seed.py"
+
+[tasks."lakebase:simulate"]
+description = "Apply a deterministic INSERT/UPDATE/DELETE to Lakebase (customers/invoices/contracts) — the refresh-stage change set. Idempotent. Needs LAKEBASE_* + PGPASSWORD."
+run = "uv run python scripts/lakebase_simulate.py"
+
+[tasks."docs:seed"]
+description = "Generate Silverline contract PDFs + credit-memo .md from the seed data and upload them to the UC volume silverline.bronze.files. Needs DATABRICKS_HOST (.env) + DATABRICKS_TOKEN (shell). Pass -- --local-only to skip upload."
+run = "uv run python scripts/generate_contract_docs.py {{arg(name='args', default='')}}"
+
+[tasks."medallion:dbt"]
+description = "Build the dbt medallion (silver + gold) on the Starter Warehouse — dbt run --select tag:medallion."
+run = "cd dbt && uv run dbt run --profiles-dir . --select tag:medallion"

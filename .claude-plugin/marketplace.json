@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "silveraiwolf",
+  "owner": {
+    "name": "SilverAIWolf"
+  },
+  "description": "SilverAIWolf learning tutorials — installable Claude Code plugins. `claude plugin marketplace add samlexrod/silveraiwolf-learning` lists every tutorial; install one with `<plugin>@silveraiwolf`.",
+  "plugins": [
+    {
+      "name": "silver-databricks-end-to-end",
+      "source": "./tutorials/databricks/end-to-end/.claude/plugins/silver-databricks-end-to-end",
+      "description": "Databricks Free Edition — one $0, serverless-only, no-cloud end-to-end tutorial walked as 12 ordered stages: setup (CLI · UC · dbt) → lakebase (serverless Postgres 17 + Data API) → lakehouse (medallion dbt vs SDP + CDC) → analytics (Metric Views + AI/BI + Genie + ai_query). Start with /silver-databricks-end-to-end:start."
+    }
+  ]
+}

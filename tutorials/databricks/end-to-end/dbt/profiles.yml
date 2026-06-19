@@ -1,0 +1,14 @@
+# dbt profile for Free Edition — targets the Starter Warehouse via env vars (no secrets in this file).
+# host/warehouse come from .env (via mise). Auth is OAuth U2M: it reuses the cached browser-login token
+# from `databricks auth login` (the `free` profile) — no PAT to manage. Used with `dbt --profiles-dir .`.
+databricks_free:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_HOST') | replace('https://', '') | replace('/', '') }}"
+      http_path: "/sql/1.0/warehouses/{{ env_var('DATABRICKS_WAREHOUSE_ID') }}"
+      auth_type: oauth        # OAuth U2M — reuses the cached token from `databricks auth login`
+      catalog: silverline
+      schema: silver          # default; models set bronze/silver/gold per folder (see generate_schema_name macro)
+      threads: 4

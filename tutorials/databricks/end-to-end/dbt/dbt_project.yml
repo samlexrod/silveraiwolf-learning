@@ -1,0 +1,27 @@
+name: silverline
+version: "1.0.0"
+profile: databricks_free
+config-version: 2
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# The medallion as one dbt project on Free Edition's single shared catalog `silverline`.
+# Schemas are set per folder (bronze/silver/gold). Models are added by the `lakehouse/` track; this
+# file + the profile exist from `setup/` so `dbt debug` works before any models are present.
+models:
+  silverline:
+    +file_format: delta
+    +persist_docs:
+      relation: true
+      columns: true
+    bronze:
+      +schema: bronze
+      +materialized: table
+    silver:
+      +schema: silver
+      +materialized: table
+    gold:
+      +schema: gold
+      +materialized: table

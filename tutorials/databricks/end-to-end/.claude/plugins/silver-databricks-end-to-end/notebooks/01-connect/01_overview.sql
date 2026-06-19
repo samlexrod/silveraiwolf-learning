@@ -1,0 +1,22 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # Stage 01 — connect  ·  *CLI plumbing (no UI step)*
+-- MAGIC
+-- MAGIC This stage was run **for you** with the Databricks CLI — authenticating is plumbing, not a workload,
+-- MAGIC so there's nothing to run here. This note records what it did.
+-- MAGIC
+-- MAGIC ## What happened
+-- MAGIC - Installed / verified the **Databricks CLI** (v0.294.0).
+-- MAGIC - Authenticated **OAuth U2M** → a local profile named `free` (`databricks auth login`).
+-- MAGIC - Captured the two values every later stage needs.
+-- MAGIC
+-- MAGIC ## Captured values
+-- MAGIC | Key | Value |
+-- MAGIC |-----|-------|
+-- MAGIC | Workspace URL | `https://dbc-e419224d-97aa.cloud.databricks.com` |
+-- MAGIC | User | `samlexrod@gmail.com` |
+-- MAGIC | Starter Warehouse id | `356c99be7a00b406` (Serverless Starter Warehouse) |
+-- MAGIC
+-- MAGIC ## Why it's not a notebook
+-- MAGIC Authentication and credential setup live on your machine / the CLI. In production this is automation
+-- MAGIC (CI, service identities), never click-ops — so Claude runs it. ➡️ Next: `02-landing-zone`.
