@@ -184,7 +184,8 @@ and the current stage. Then render an **`AskUserQuestion`**:
    `/silver-databricks-end-to-end:start` — it will re-read `PROGRESS.md` and pick up at the current stage.
 3. After Stage 12 (`ai-bi`): mark it done and congratulate (source → medallion → governed analytics on $0).
    Mention that `ml` and `agents` phases are planned for the future, but don't reference any author/build
-   docs — the learner-facing tutorial ends here.
+   docs — the learner-facing tutorial ends here. Also point them to **`/silver-databricks-end-to-end:cleanup`**,
+   which tears down every resource created and returns the workspace to its fresh $0 state whenever they're done.
 
 ## Notes
 - The Notes section of `PROGRESS.md` is the durable memory across chats — prefer reading a value from there

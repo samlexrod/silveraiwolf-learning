@@ -74,20 +74,23 @@ default, no version flag.)
 
 The tutorial is **one Claude Code plugin**, `silver-databricks-end-to-end`, under
 `tutorials/databricks/end-to-end/.claude/plugins/silver-databricks-end-to-end/` (in the tutorial's
-`.claude/.claude-plugin/marketplace.json`). It exposes **exactly one command** — no
-per-stage skills (they cluttered the menu):
+`.claude/.claude-plugin/marketplace.json`). It exposes **two commands** (`start` + `cleanup`) and **no
+per-stage skills** (they cluttered the menu):
 
 - `.claude-plugin/plugin.json` — the manifest.
-- `commands/start.md` — the **only** command, `/silver-databricks-end-to-end:start`. It's the **orchestrator**:
+- `commands/start.md` — the main command, `/silver-databricks-end-to-end:start`. It's the **orchestrator**:
   resolves paths, loads/creates `PROGRESS.md`, shows where the learner is, and walks one stage at a time,
   advancing only on confirmation.
+- `commands/cleanup.md` — `/silver-databricks-end-to-end:cleanup`. Tears down **every** resource the tutorial
+  created (back to the fresh $0 state) by running `scripts/cleanup.sh` (idempotent); keeps the shared Starter
+  Warehouse, and reminds about the learner-owned AWS resources it can't touch.
 - `stages/NN-<name>.md` — the 12 stage docs (plain markdown, **not** invokable skills), read on demand by
   the orchestrator. Setup `01-connect · 02-landing-zone · 03-project`; Lakebase `04-provision · 05-seed ·
   06-data-api`; Lakehouse `07-ingest · 08-medallion · 09-refresh`; Analytics `10-business-layer ·
   11-semantic · 12-ai-bi`.
 
-That's the **entire shipped tutorial** — `plugin.json` + `commands/start.md` + `stages/`. Nothing else in
-the plugin dir.
+That's the **entire shipped tutorial** — `plugin.json` + `commands/{start,cleanup}.md` + `stages/`. Nothing
+else in the plugin dir.
 
 > 🛠️ **`ROADMAP.md` is an author/build doc, NOT shipped.** It lives at the **tutorial root**
 > (`tutorials/databricks/end-to-end/ROADMAP.md`), **outside** the plugin, so it is never installed and the
