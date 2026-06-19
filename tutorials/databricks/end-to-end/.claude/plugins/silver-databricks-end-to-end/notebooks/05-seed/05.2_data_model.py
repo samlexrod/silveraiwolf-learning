@@ -34,22 +34,9 @@
 # MAGIC | `invoices` | `contract_id`, `schedule_id` | `contracts`, `payment_schedule` | each elapsed period is **billed** as an invoice |
 # MAGIC | `payments` | `invoice_id` | `invoices` | cash received is applied against an invoice |
 # MAGIC
-# MAGIC The same model as a diagram (Databricks renders Mermaid in markdown) — `||--o{` = one-to-many, `||--o|` = one-to-(zero/one):
+# MAGIC The same model as a diagram (`||--o{` = one-to-many, `||--o|` = one-to-(zero/one)) — rendered from `erd.mmd` via mermaid.ink:
 # MAGIC
-# MAGIC ```mermaid
-# MAGIC erDiagram
-# MAGIC   customers        ||--o{ applications     : submits
-# MAGIC   vendors          ||--o{ applications     : "named in"
-# MAGIC   applications     ||--o| contracts        : "booked into"
-# MAGIC   customers        ||--o{ contracts        : holds
-# MAGIC   vendors          ||--o{ equipment        : supplies
-# MAGIC   contracts        ||--o{ contract_assets  : "backed by"
-# MAGIC   equipment        ||--o{ contract_assets  : "allocated in"
-# MAGIC   contracts        ||--o{ payment_schedule : "amortized as"
-# MAGIC   contracts        ||--o{ invoices         : "billed via"
-# MAGIC   payment_schedule ||--o| invoices         : "for period"
-# MAGIC   invoices         ||--o{ payments         : "settled by"
-# MAGIC ```
+# MAGIC ![Silverline Capital — ER diagram](https://mermaid.ink/svg/ZXJEaWFncmFtCiAgY3VzdG9tZXJzIHx8LS1veyBhcHBsaWNhdGlvbnMgOiBzdWJtaXRzCiAgdmVuZG9ycyB8fC0tb3sgYXBwbGljYXRpb25zIDogIm5hbWVkIGluIgogIGFwcGxpY2F0aW9ucyB8fC0tb3wgY29udHJhY3RzIDogImJvb2tlZCBpbnRvIgogIGN1c3RvbWVycyB8fC0tb3sgY29udHJhY3RzIDogaG9sZHMKICB2ZW5kb3JzIHx8LS1veyBlcXVpcG1lbnQgOiBzdXBwbGllcwogIGNvbnRyYWN0cyB8fC0tb3sgY29udHJhY3RfYXNzZXRzIDogImJhY2tlZCBieSIKICBlcXVpcG1lbnQgfHwtLW97IGNvbnRyYWN0X2Fzc2V0cyA6ICJhbGxvY2F0ZWQgaW4iCiAgY29udHJhY3RzIHx8LS1veyBwYXltZW50X3NjaGVkdWxlIDogImFtb3J0aXplZCBhcyIKICBjb250cmFjdHMgfHwtLW97IGludm9pY2VzIDogImJpbGxlZCB2aWEiCiAgcGF5bWVudF9zY2hlZHVsZSB8fC0tb3wgaW52b2ljZXMgOiAiZm9yIHBlcmlvZCIKICBpbnZvaWNlcyB8fC0tb3sgcGF5bWVudHMgOiAic2V0dGxlZCBieSIK)
 # MAGIC
 # MAGIC **Lifecycle:** **origination** (`applications`) → **booking** (`contracts` + `contract_assets`) →
 # MAGIC **billing** (`payment_schedule` → `invoices`) → **collections** (`payments`).

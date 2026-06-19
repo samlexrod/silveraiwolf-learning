@@ -1,0 +1,12 @@
+erDiagram
+  customers ||--o{ applications : submits
+  vendors ||--o{ applications : "named in"
+  applications ||--o| contracts : "booked into"
+  customers ||--o{ contracts : holds
+  vendors ||--o{ equipment : supplies
+  contracts ||--o{ contract_assets : "backed by"
+  equipment ||--o{ contract_assets : "allocated in"
+  contracts ||--o{ payment_schedule : "amortized as"
+  contracts ||--o{ invoices : "billed via"
+  payment_schedule ||--o| invoices : "for period"
+  invoices ||--o{ payments : "settled by"
