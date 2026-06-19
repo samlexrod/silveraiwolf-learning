@@ -19,13 +19,39 @@
 
 # MAGIC %md
 # MAGIC ## Entity relationships
+# MAGIC Read each row as a **foreign key**: the **child** (the *many* side) points to its **parent** (the *one* side).
+# MAGIC
+# MAGIC | Child (many) | FK column | Parent (one) | Read it as |
+# MAGIC |---|---|---|---|
+# MAGIC | `applications` | `customer_id` | `customers` | a customer submits **many** applications |
+# MAGIC | `applications` | `vendor_id` | `vendors` | each application names the equipment vendor |
+# MAGIC | `contracts` | `application_id` | `applications` | an approved application is booked into **one** contract |
+# MAGIC | `contracts` | `customer_id` | `customers` | (denormalized — the contract's customer) |
+# MAGIC | `equipment` | `vendor_id` | `vendors` | each asset is supplied by **one** vendor |
+# MAGIC | `contract_assets` | `contract_id` | `contracts` | a contract is backed by **many** assets… |
+# MAGIC | `contract_assets` | `equipment_id` | `equipment` | …each linking one equipment → `contract_assets` is the **M:N bridge** |
+# MAGIC | `payment_schedule` | `contract_id` | `contracts` | a contract amortizes into **many** scheduled periods |
+# MAGIC | `invoices` | `contract_id`, `schedule_id` | `contracts`, `payment_schedule` | each elapsed period is **billed** as an invoice |
+# MAGIC | `payments` | `invoice_id` | `invoices` | cash received is applied against an invoice |
+# MAGIC
+# MAGIC The same model as a diagram (Databricks renders Mermaid in markdown) — `||--o{` = one-to-many, `||--o|` = one-to-(zero/one):
+# MAGIC
+# MAGIC ```mermaid
+# MAGIC erDiagram
+# MAGIC   customers        ||--o{ applications     : submits
+# MAGIC   vendors          ||--o{ applications     : "named in"
+# MAGIC   applications     ||--o| contracts        : "booked into"
+# MAGIC   customers        ||--o{ contracts        : holds
+# MAGIC   vendors          ||--o{ equipment        : supplies
+# MAGIC   contracts        ||--o{ contract_assets  : "backed by"
+# MAGIC   equipment        ||--o{ contract_assets  : "allocated in"
+# MAGIC   contracts        ||--o{ payment_schedule : "amortized as"
+# MAGIC   contracts        ||--o{ invoices         : "billed via"
+# MAGIC   payment_schedule ||--o| invoices         : "for period"
+# MAGIC   invoices         ||--o{ payments         : "settled by"
 # MAGIC ```
-# MAGIC customers ── applications ──> contracts ──< contract_assets >── equipment ──> vendors
-# MAGIC                                   │                                             ▲
-# MAGIC                                   ├──< payment_schedule                         │
-# MAGIC                                   └──< invoices ──< payments      equipment.vendor_id ┘
-# MAGIC ```
-# MAGIC The lifecycle: **origination** (`applications`) → **booking** (`contracts` + `contract_assets`) →
+# MAGIC
+# MAGIC **Lifecycle:** **origination** (`applications`) → **booking** (`contracts` + `contract_assets`) →
 # MAGIC **billing** (`payment_schedule` → `invoices`) → **collections** (`payments`).
 
 # COMMAND ----------
