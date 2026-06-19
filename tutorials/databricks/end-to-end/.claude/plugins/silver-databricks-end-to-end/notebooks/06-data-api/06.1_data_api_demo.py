@@ -63,7 +63,10 @@ print("client id loaded:", bool(CLIENT_ID), "· secret loaded:", bool(CLIENT_SEC
 
 # MAGIC %md
 # MAGIC ## 2 — Mint an M2M OAuth token for the service principal
-# MAGIC `client_credentials` grant against the workspace OIDC token endpoint.
+# MAGIC Same idea as the Lakebase DB token in `04`/`05` — **mint** = get a fresh, short-lived credential on
+# MAGIC demand. Here we *exchange* the SP's long-lived **client id + secret** for a short-lived **bearer
+# MAGIC token** (`client_credentials` grant against the workspace OIDC endpoint), and send only that token to
+# MAGIC the API. The secret never leaves this step; the token expires on its own.
 
 # COMMAND ----------
 

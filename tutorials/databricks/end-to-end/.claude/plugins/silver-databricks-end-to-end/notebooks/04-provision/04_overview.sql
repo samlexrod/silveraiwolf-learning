@@ -22,6 +22,9 @@
 -- MAGIC | Role | `<your-databricks-email>` (your identity) |
 -- MAGIC | Password | a short-lived OAuth token (≈1h), minted on demand — **not** stored |
 -- MAGIC
+-- MAGIC > 🧠 **"Mint"** = ask a trusted issuer for a **brand-new, short-lived credential** on demand (like a mint
+-- MAGIC > stamping a fresh coin) — so nothing static is stored or committed and a leak expires fast.
+-- MAGIC >
 -- MAGIC > Mint a token (CLI): `databricks postgres generate-database-credential
 -- MAGIC > projects/silverline-oltp/branches/production/endpoints/primary` → `.token`. Inside a notebook, via the
 -- MAGIC > SDK: `w.postgres.get_endpoint(endpoint)` + `w.postgres.generate_database_credential(endpoint)` (as

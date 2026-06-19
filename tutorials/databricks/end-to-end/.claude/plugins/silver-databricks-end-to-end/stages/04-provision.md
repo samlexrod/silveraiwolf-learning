@@ -71,6 +71,13 @@ EOF
 
 ## Section 3 — Mint a credential + verify connectivity
 
+> 🧠 **"Mint" = ask a trusted issuer for a brand-new credential, on demand** (like a mint stamping a fresh
+> coin). Instead of storing a long-lived database password, each time you connect you ask Databricks to issue
+> a **short-lived OAuth token** (≈1h) and use *that* as the password. Nothing static is saved or committed, a
+> leaked token expires fast, and there's no password to rotate. You'll mint credentials this way throughout
+> the tutorial — DB tokens here and in the seed/ingest notebooks, and an **OAuth access token** for the API
+> identity in the `data-api` stage.
+
 Lakebase auth = a **short-lived OAuth token used as the Postgres password** (≈1h), minted via the
 **`postgres`** API for the endpoint:
 
