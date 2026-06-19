@@ -60,11 +60,13 @@ CREATE VOLUME IF NOT EXISTS silverline.bronze.files
 > | Data files | Databricks-managed | your cloud bucket (`LOCATION '…'`) |
 > | Drop the object | files **deleted** | files **kept** |
 > | Setup needed | none | external location + storage credential |
-> | Free Edition | ✅ the only option | ❌ needs the AWS quickstart (real $) |
+> | Free Edition | ✅ default (no setup) | ⚠️ opt-in via the AWS quickstart (your cloud, $) |
 >
-> On **Free Edition** there's no external storage, so this volume — and every medallion **table** you build
-> later — is **managed**. The lone exception is the optional **CDF** step in `ingest`, which needs an
-> external-storage catalog from the AWS quickstart (billed to *your* AWS — opt-in).
+> On **Free Edition** there's no *built-in* external storage, so the tutorial stays **managed** throughout
+> (this volume + every medallion **table** later). But external **is** possible: register an **external
+> location** (e.g. the **AWS quickstart** → your own S3 bucket) + a storage credential, and external
+> **tables and volumes** both become available — billed to **your** cloud account (real $), so it's opt-in.
+> The optional **CDF** step in `ingest` is just one example that uses such an external-storage catalog.
 
 **Pause.** Confirm the volume exists (`DESCRIBE VOLUME silverline.bronze.files`) (render as `AskUserQuestion`).
 

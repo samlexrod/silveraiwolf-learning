@@ -43,11 +43,13 @@ CREATE SCHEMA IF NOT EXISTS silverline.gold   COMMENT 'Business / serving';
 -- MAGIC | Data files | Databricks-managed | your cloud bucket (`LOCATION '…'`) |
 -- MAGIC | Drop the object | files **deleted** | files **kept** |
 -- MAGIC | Setup needed | none | external location + storage credential |
--- MAGIC | Free Edition | ✅ the only option | ❌ needs the AWS quickstart (real $) |
+-- MAGIC | Free Edition | ✅ default (no setup) | ⚠️ opt-in via the AWS quickstart (your cloud, $) |
 -- MAGIC
--- MAGIC On **Free Edition** there's no external storage, so this volume — and every medallion **table** you
--- MAGIC build later — is **managed**. The one exception is the optional **CDF** step in `ingest` (external-storage
--- MAGIC catalog via the AWS quickstart, billed to *your* AWS — opt-in).
+-- MAGIC On **Free Edition** there's no *built-in* external storage, so the tutorial stays **managed** throughout
+-- MAGIC (this volume + every medallion **table** later). But external **is** possible: register an **external
+-- MAGIC location** (e.g. the **AWS quickstart** → your own S3 bucket) + a storage credential, and external
+-- MAGIC **tables and volumes** both become available — billed to **your** cloud account (real $), so it's opt-in.
+-- MAGIC The optional **CDF** step in `ingest` is just one example that uses such an external-storage catalog.
 
 -- COMMAND ----------
 
