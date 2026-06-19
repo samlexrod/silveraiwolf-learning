@@ -30,15 +30,17 @@ HTTPS.
 
 In the workspace: **Database** (Lakebase) → open the **`silverline-oltp`** project → **Data API** page (under
 *App Backend*) → **Enable Data API**. This auto-creates the `authenticator` Postgres role and exposes the
-`public` schema. On the **API** tab, copy the **API URL** — it looks like:
+`public` schema. The **API** tab shows the base URL:
 
 ```
 https://<endpoint-host>/api/2.0/workspace/<workspace-id>/rest/databricks_postgres
 ```
 
-> You append the schema (`/public`) + table when querying (Section 4).
+> **No need to copy it.** The demo notebook (Section 5) **derives** this URL from the SDK
+> (`endpoint host + workspace id + database`), so it stays correct even after you re-provision Lakebase — the
+> endpoint host changes, and a pasted URL would silently break. Glance at the page only to confirm the shape.
 
-**Pause.** Confirm the Data API is enabled and you've copied the API URL (render as `AskUserQuestion`).
+**Pause.** Confirm the Data API is **enabled** on the project (render as `AskUserQuestion`).
 
 ---
 
@@ -96,15 +98,22 @@ the `silverline` secret scope (`dbutils.secrets.get`), mints the M2M token, and 
 `requests` (customers, overdue invoices, active loans > $250k, and a contracts↔customers embedded join),
 displaying each as a table. That's how an app/agent would consume it.
 
-**CLI equivalent:** mint a short-lived **M2M OAuth token** for the SP, then `curl` the endpoint. Append
-`/public/<table>` to the API URL; filtering/sorting/pagination follow PostgREST conventions.
+**CLI equivalent:** **derive** the API URL (no paste — same three pieces as the notebook), mint a short-lived
+**M2M OAuth token** for the SP, then `curl` the endpoint. Append `/public/<table>`; filtering/sorting/
+pagination follow PostgREST conventions.
 
 ```bash
 cd tutorials/databricks/end-to-end && set -a && . ./.env && set +a
-HOST=https://<your-workspace>.cloud.databricks.com
-API="<API-URL-from-Section-1>"
+ENDPOINT="projects/silverline-oltp/branches/production/endpoints/primary"
 
-TOKEN=$(curl -s -X POST "$HOST/oidc/v1/token" \
+# derive the Data API URL: endpoint host (volatile — changes on re-provision) + workspace id + database
+WS=$(databricks auth describe -p free | awk -F': ' '/^Host:/{print $2; exit}')
+HOST_DB=$(databricks postgres get-endpoint "$ENDPOINT" -p free -o json | jq -r .status.hosts.host)
+WID=$(curl -s -D - -o /dev/null -H "Authorization: Bearer $(databricks auth token -p free | jq -r .access_token)" \
+        "$WS/api/2.0/preview/scim/v2/Me" | tr -d '\r' | awk 'tolower($1)=="x-databricks-org-id:"{print $2}')
+API="https://$HOST_DB/api/2.0/workspace/$WID/rest/databricks_postgres"
+
+TOKEN=$(curl -s -X POST "$WS/oidc/v1/token" \
   --user "$LAKEBASE_SP_CLIENT_ID:$LAKEBASE_SP_SECRET" \
   --data 'grant_type=client_credentials&scope=all-apis' | jq -r '.access_token')
 

@@ -17,15 +17,37 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1 — Config + read the SP credentials from the secret scope
-# MAGIC The **API URL** is non-secret (from the Data API page). The SP **client id / secret** come from
-# MAGIC `dbutils.secrets` — they never appear in the notebook or output.
+# MAGIC ## 1 — Config: **derive** the Data API URL + read the SP credentials
+# MAGIC Nothing to paste. The Data API URL is just three pieces your workspace already knows —
+# MAGIC **endpoint host · workspace id · database** — so we assemble it from the SDK:
+# MAGIC
+# MAGIC ```
+# MAGIC https://{endpoint-host}/api/2.0/workspace/{workspace-id}/rest/databricks_postgres
+# MAGIC         └ w.postgres.get_endpoint(...)   └ w.get_workspace_id()   └ the default Lakebase db
+# MAGIC ```
+# MAGIC
+# MAGIC > 💡 **Why derive, not paste?** The endpoint host **changes every time you re-provision Lakebase**
+# MAGIC > (e.g. `ep-round-violet…` → `ep-aged-rain…`). A hardcoded URL silently rots; a derived one is always
+# MAGIC > current. It's the same URL shown on your project's **Data API** page — check there if you're curious.
+# MAGIC >
+# MAGIC > The SP **client id / secret** still come from the `silverline` secret scope — never shown in output.
 
 # COMMAND ----------
 
-# Non-secret — copy from YOUR project's Data API page (API tab). Append /public/<table> when querying.
-# Shape: https://<your-endpoint-host>.database.<region>.cloud.databricks.com/api/2.0/workspace/<workspace-id>/rest/databricks_postgres
-API_URL = "https://ep-round-violet-d8h2apum.database.us-east-2.cloud.databricks.com/api/2.0/workspace/1542744407762921/rest/databricks_postgres"
+# MAGIC %pip install "databricks-sdk>=0.61.0" -q
+# MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+from databricks.sdk import WorkspaceClient
+
+ENDPOINT = "projects/silverline-oltp/branches/production/endpoints/primary"  # Autoscaling project (PG17)
+w = WorkspaceClient()
+
+# Assemble the Data API base URL — re-provision-proof, no paste. Append /public/<table> to query.
+HOST = w.postgres.get_endpoint(ENDPOINT).status.hosts.host    # ← changes on re-provision; always current here
+WORKSPACE_ID = w.get_workspace_id()
+API_URL = f"https://{HOST}/api/2.0/workspace/{WORKSPACE_ID}/rest/databricks_postgres"
 
 SCOPE = "silverline"
 CLIENT_ID = dbutils.secrets.get(SCOPE, "data_api_sp_client_id")
