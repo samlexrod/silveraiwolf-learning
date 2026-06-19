@@ -117,9 +117,12 @@ CREATE TABLE IF NOT EXISTS silverline.bronze.ext_demo (id INT, note STRING)
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC 🔗 **This same external location backs the optional CDF step** (`07.5_lakebase_cdf`), which creates an
--- MAGIC external-storage *catalog* `silverline_cdf` (`MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`) on it —
--- MAGIC set it up once here and CDF reuses it.
+-- MAGIC 🔗 **This same external location backs the optional CDF step** (`07.5_lakebase_cdf`). CDF's `lb_*_history`
+-- MAGIC tables are **managed**, but Free Edition won't let them use its *default* storage — so the catalog
+-- MAGIC `silverline_cdf` is created with its **managed-storage root on this external location**:
+-- MAGIC `CREATE CATALOG silverline_cdf MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`. (`MANAGED LOCATION` =
+-- MAGIC where a catalog's *managed* objects store data — here, your own S3: managed objects on external storage,
+-- MAGIC **not** an external table.) Set the external location up once here → CDF reuses it.
 
 -- COMMAND ----------
 

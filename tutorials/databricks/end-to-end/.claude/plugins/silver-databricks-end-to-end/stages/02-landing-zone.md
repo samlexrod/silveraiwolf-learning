@@ -133,10 +133,12 @@ CREATE TABLE IF NOT EXISTS silverline.bronze.ext_demo (id INT, note STRING)
 ```
 
 **4. Reused by the CDF step.** This **same external location** is the prerequisite for the optional **Lakebase
-CDF** path in `ingest` (`07.5`), which creates an external-storage *catalog* (`silverline_cdf`,
-`MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`) on it. Set it up once here and CDF just reuses it — the
-external volume/table above and the CDF catalog all sit on the one external location. (CDF needs a *catalog*,
-not a volume — same storage, different UC object.)
+CDF** path in `ingest` (`07.5`). A subtlety worth knowing: CDF's `lb_*_history` tables are **managed**, but
+Free Edition won't let them use its *default* storage for CDF — so the destination catalog `silverline_cdf` is
+created with its **managed-storage root pointed at this external location**:
+`CREATE CATALOG silverline_cdf MANAGED LOCATION 's3://<your-bucket>/lakebase_cdf'`. `MANAGED LOCATION` sets
+*where a catalog's managed objects store their data* — here, your own S3. So it's **managed objects living on
+external storage** (not an external table). Set the external location up once here and CDF reuses it.
 
 **Pause.** If you opted in: confirm `SHOW EXTERNAL LOCATIONS` lists your location and the external volume/table
 resolve. If you skipped it: fine — the tutorial runs fully on managed storage (render as `AskUserQuestion`).
