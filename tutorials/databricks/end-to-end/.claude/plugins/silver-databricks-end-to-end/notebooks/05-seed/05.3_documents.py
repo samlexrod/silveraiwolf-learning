@@ -198,9 +198,22 @@ for f in dbutils.fs.ls(f"{VOL_BASE}/memos")[:3]:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ✅ Silverline's unstructured documents are in `silverline.bronze.files`. Browse them in **Catalog →
-# MAGIC silverline → bronze → files**. This completes the **seed** stage — structured (Lakebase OLTP) **and**
-# MAGIC unstructured (volume) sources are loaded. Next phase: **Lakehouse** (`06-data-api`, then `07-ingest`).
+# MAGIC ## 5 — See your rendered documents in Catalog Explorer
+# MAGIC The files are real objects in a Unity Catalog **volume** — view them in the UI, no code:
+# MAGIC 1. Left sidebar → **Catalog** → expand **`silverline`** → **`bronze`** → **Volumes** → **`files`**.
+# MAGIC 2. Open **`contracts/`** and click any **`contract_<id>.pdf`** → Databricks **previews the PDF** — the
+# MAGIC    rendered lease/loan **agreement** for that contract (built from the seeded Postgres rows; use the
+# MAGIC    **Download** button for the full document).
+# MAGIC 3. Open **`memos/`** and click a **`credit_memo_<customer_id>.md`** → the underwriter's credit memo.
+# MAGIC
+# MAGIC > 🧠 This is how you browse + preview any file in a UC volume — the same `silverline.bronze.files`
+# MAGIC > volume the **`agents`** phase later embeds for **Vector Search** (RAG).
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ✅ This completes the **seed** stage — both sources are loaded: **structured** (Lakebase OLTP, `05.1`)
+# MAGIC and **unstructured** (the volume, above). Next phase: **Lakehouse** (`06-data-api`, then `07-ingest`).
 
 # COMMAND ----------
 
