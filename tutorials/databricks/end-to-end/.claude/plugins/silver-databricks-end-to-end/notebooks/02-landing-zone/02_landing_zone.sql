@@ -138,3 +138,8 @@ CREATE TABLE IF NOT EXISTS silverline.bronze.ext_demo (id INT, note STRING)
 -- MAGIC %md
 -- MAGIC ✅ **Done.** Catalog `silverline`, the medallion schemas, and the managed volume all exist.
 -- MAGIC Open **Catalog Explorer** and confirm you can see them. Next stage: `provision` (Lakebase OLTP).
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

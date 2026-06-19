@@ -45,3 +45,8 @@
 -- MAGIC ## The four phases
 -- MAGIC **Setup** (01–03) → **Lakebase** (04–06) → **Lakehouse** (07–09) → **Analytics** (10–12).
 -- MAGIC Each builds on the last. Progress is also tracked in the repo's `PROGRESS.md`.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

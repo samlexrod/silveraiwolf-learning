@@ -72,3 +72,8 @@ def contract_aging_sdp():
         F.sum(F.when(F.col("status") == "paid", F.col("amount")).otherwise(0)).alias("paid_amount"),
         F.sum("amount").alias("total_billed"),
     )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

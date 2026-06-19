@@ -283,3 +283,8 @@ with psycopg.connect(host=HOST, port=5432, dbname=DB, user=USER, password=TOKEN,
 # MAGIC the counts above match (customers=60 … payments=1291), and re-running is idempotent (`TRUNCATE` + reload).
 # MAGIC Next in the **seed** stage: **`05.2_data_model`** (ERD + data dictionary, live exploration), then
 # MAGIC **`05.3_documents`** (land the contract PDFs + credit memos in the volume).
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

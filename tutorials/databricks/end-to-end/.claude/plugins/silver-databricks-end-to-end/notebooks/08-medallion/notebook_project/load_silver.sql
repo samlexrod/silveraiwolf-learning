@@ -32,3 +32,8 @@ SELECT i.invoice_id, i.contract_id, ct.customer_id, ct.contract_type,
 FROM silverline.bronze.invoices i
 JOIN silverline.silver.silver_contracts_nb ct ON ct.contract_id = i.contract_id
 WHERE i.invoice_id IS NOT NULL AND i.contract_id IS NOT NULL;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

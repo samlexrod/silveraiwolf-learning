@@ -64,3 +64,8 @@ for t in run.tasks:
 # MAGIC %md
 # MAGIC ✅ The Job ran the `notebook_project/` notebooks (silver→gold) → `*_nb`. Open **Jobs & Pipelines →
 # MAGIC silverline-notebook-job** to see the DAG + jump into each task notebook. ➡️ `08.5_parity`.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

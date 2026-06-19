@@ -20,3 +20,8 @@
 -- MAGIC ## Why it's not a notebook
 -- MAGIC Authentication and credential setup live on your machine / the CLI. In production this is automation
 -- MAGIC (CI, service identities), never click-ops — so Claude runs it. ➡️ Next: `02-landing-zone`.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

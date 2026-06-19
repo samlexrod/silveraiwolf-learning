@@ -104,3 +104,8 @@ display(api_get("contracts?select=contract_id,principal,customers(legal_name,seg
 # MAGIC
 # MAGIC > 🔒 Production: add **row-level security** policies so each identity sees only its rows, and scope the
 # MAGIC > SP's grants to least privilege.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

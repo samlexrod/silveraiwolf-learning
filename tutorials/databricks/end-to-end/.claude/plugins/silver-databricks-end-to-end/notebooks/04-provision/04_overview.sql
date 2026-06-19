@@ -28,3 +28,8 @@
 -- MAGIC > `05-seed/05.1_seed_oltp` does).
 -- MAGIC
 -- MAGIC ➡️ Next: `05-seed` (load the 9-table OLTP + land the documents).
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

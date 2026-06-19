@@ -83,3 +83,8 @@ LIMIT 10;
 -- MAGIC %md
 -- MAGIC ✅ Gold documented (table + column COMMENTs) + `customer_360` curated view. These comments power
 -- MAGIC **Genie** + the **Metric View** semantic layer. ➡️ Next: `11-semantic`.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

@@ -174,3 +174,8 @@ ORDER BY t;
 
 -- MAGIC %md
 -- MAGIC ✅ bronze landed. ➡️ Next: **stage 08 (`medallion`)** — build the silver models above, then gold.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

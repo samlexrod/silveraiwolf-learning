@@ -174,3 +174,8 @@ with pg() as c, c.cursor() as cur:
 # MAGIC
 # MAGIC **Takeaway:** to capture deletes without the managed feature, go to the **WAL** — Postgres's source of
 # MAGIC truth for every change. `silver` applies these (a `DELETE` row tombstones the key). ➡️ Next: stage 08.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

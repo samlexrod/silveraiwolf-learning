@@ -55,3 +55,8 @@
 -- MAGIC · [Synced tables (Delta→Postgres serving)](https://docs.databricks.com/aws/en/oltp/instances/sync-data/sync-table)
 -- MAGIC
 -- MAGIC ➡️ Next: **`07.3_watermark_cdc`** — the hands-on custom CDC.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

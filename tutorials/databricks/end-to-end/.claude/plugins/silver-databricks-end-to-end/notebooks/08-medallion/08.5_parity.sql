@@ -68,3 +68,8 @@ SELECT
 -- MAGIC [LatentView](https://www.latentview.com/blog/dbt-vs-databricks/) ·
 -- MAGIC [Materialized views](https://docs.databricks.com/aws/en/ldp/dbsql/materialized) ·
 -- MAGIC [dbt Cloud pricing](https://b-eye.com/blog/dbt-cloud-pricing/) · ➡️ Next: stage 09 (`refresh`).
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

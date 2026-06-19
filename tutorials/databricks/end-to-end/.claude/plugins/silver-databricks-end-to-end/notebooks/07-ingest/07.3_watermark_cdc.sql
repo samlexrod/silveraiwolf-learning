@@ -119,3 +119,8 @@ LIMIT 10;
 -- MAGIC **When to use which:** CTAS for small/simple full refreshes; watermark CDC when the source has a
 -- MAGIC reliable change marker (`updated_at`/LSN) but no managed CDC; Lakehouse Sync when you want hands-off,
 -- MAGIC delete-aware CDC and it's available. ➡️ Next: **stage 08 (`medallion`)** builds silver/gold on bronze.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

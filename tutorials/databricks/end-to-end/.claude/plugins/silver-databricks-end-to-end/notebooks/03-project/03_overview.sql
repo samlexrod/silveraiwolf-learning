@@ -20,3 +20,8 @@
 -- MAGIC | `mise run dbt:run` | build dbt models |
 -- MAGIC
 -- MAGIC ➡️ Next: `04-provision` (stand up Lakebase). End of the **Setup** phase.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

@@ -103,3 +103,8 @@ GROUP BY region ORDER BY overdue_ratio DESC;
 -- MAGIC - ✓ An **AI/BI dashboard** over `portfolio_metrics` — governed charts
 -- MAGIC - ✓ A **Genie space** over the same metric view — natural-language Q&A via the governed measures
 -- MAGIC - ✓ The payoff: **dashboard == Genie == gold**, because they share the semantic layer
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

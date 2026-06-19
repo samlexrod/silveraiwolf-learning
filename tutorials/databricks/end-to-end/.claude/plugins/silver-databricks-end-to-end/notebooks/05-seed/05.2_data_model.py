@@ -144,3 +144,8 @@ display(q("""
 # MAGIC %md
 # MAGIC ✅ You've seen the seeded OLTP live. Next stage `06-data-api`, then `07-ingest` brings this same data
 # MAGIC into Unity Catalog as `lakebase_silverline_oltp` for SQL + the medallion build.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

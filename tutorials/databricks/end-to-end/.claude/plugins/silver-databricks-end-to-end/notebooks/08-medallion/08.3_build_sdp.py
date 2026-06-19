@@ -66,3 +66,8 @@ for _ in range(40):
 # COMMAND ----------
 
 # MAGIC %md ✅ SDP build done (`_sdp`). Now `08.4_parity` proves SQL == dbt == SDP.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

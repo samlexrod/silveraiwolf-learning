@@ -65,3 +65,8 @@ CREATE TABLE IF NOT EXISTS silverline.gold.gold_contract_aging_nb (
 -- MAGIC %md
 -- MAGIC ✅ DDL done — empty `_nb` tables defined. Now `08.4_build_notebook` runs the **ELT** Job
 -- MAGIC (`notebook_project/` → `INSERT OVERWRITE`) to load them.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

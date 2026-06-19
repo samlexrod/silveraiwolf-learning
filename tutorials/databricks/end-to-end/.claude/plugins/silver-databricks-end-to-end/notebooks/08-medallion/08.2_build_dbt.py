@@ -48,3 +48,8 @@ print("silverline-dbt-job:", run.state.result_state, "|", run.state.life_cycle_s
 # COMMAND ----------
 
 # MAGIC %md ✅ dbt build done via a Job (canonical `gold_*`). Next: `08.3_build_sdp`, then `08.4_parity`.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

@@ -126,3 +126,8 @@ SELECT (SELECT tb FROM m) AS metric_view_billed,
 -- MAGIC way via `MEASURE()`, and verified to **match** the physical gold (gold = a materialized slice; the metric
 -- MAGIC view = the definition). This is the single source of truth **Genie** and the **AI/BI dashboard** consume next.
 -- MAGIC ➡️ Next: `12-ai-bi`.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

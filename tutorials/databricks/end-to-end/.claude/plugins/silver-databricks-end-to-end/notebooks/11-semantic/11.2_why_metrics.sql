@@ -123,3 +123,8 @@ FROM silverline.gold.portfolio_metrics;
 -- MAGIC - **One governed definition** = no drift between SQL, Genie, and dashboards. *(Demo 3.)*
 -- MAGIC - **Keep the gold too** — it's the fast materialized slice; the metric view is the source-of-truth
 -- MAGIC   definition. They agree by construction (11.1 = `MATCH`). ➡️ Next: `12-ai-bi` consumes this view.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

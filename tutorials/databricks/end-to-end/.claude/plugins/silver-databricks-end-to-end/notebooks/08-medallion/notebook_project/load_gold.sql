@@ -26,3 +26,8 @@ SELECT contract_id,
        sum(amount)
 FROM silverline.silver.silver_invoices_nb
 GROUP BY contract_id;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

@@ -219,3 +219,8 @@ for a in follow.attachments or []:
 # MAGIC
 # MAGIC 🎉 That closes the tutorial: a governed lakehouse where **humans (Genie/dashboards) and code (SDK/CLI/UC
 # MAGIC functions) consume the *same* governed metrics** — and AI enriches the unstructured side.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*
