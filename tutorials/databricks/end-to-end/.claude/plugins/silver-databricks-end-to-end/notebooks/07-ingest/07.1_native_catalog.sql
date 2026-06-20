@@ -102,7 +102,15 @@ ORDER BY principal_financed DESC;
 -- MAGIC > pushdown model). When LTAP ships, the decouple-via-replica/bronze step collapses into the storage layer; until
 -- MAGIC > then, read replicas (load isolation) + bronze (format/history) are the GA path.
 -- MAGIC
--- MAGIC **Rule of thumb: native to _query_ now; Delta to _govern history_, get columnar scans, and power the medallion.**
+-- MAGIC > ⚠️ **Don't point heavy analytics at the live OLTP.** Column + predicate **pushdown** trims *how much* data
+-- MAGIC > comes back, but the scan still runs on the **transactional** Postgres endpoint — so large or concurrent
+-- MAGIC > analytical queries contend with the application's own reads/writes (lock + I/O pressure) and can **degrade
+-- MAGIC > the live app**. A read replica offloads this *if* you can route to one; otherwise, **until LTAP is GA,
+-- MAGIC > materialize into Delta and analyze there** — `07.2` CTAS or `07.3`/`07.4`/`07.5` CDC/CDF. Trade-off on the
+-- MAGIC > source: **CTAS is the heaviest I/O** (re-scans *every* row each run), while **CDC/CDF are incremental** (a
+-- MAGIC > one-time backfill, then only changes) — much lighter ongoing load on the OLTP.
+-- MAGIC
+-- MAGIC **Rule of thumb: native to _query_ now (light/occasional); Delta to _govern history_, get columnar scans, power the medallion, and keep heavy analytics off the OLTP.**
 -- MAGIC With clean, modest OLTP like Silverline's you could analyze straight off this catalog (or a read replica) — we still
 -- MAGIC land bronze to teach the pattern and get the history/replay + medallion benefits.
 
