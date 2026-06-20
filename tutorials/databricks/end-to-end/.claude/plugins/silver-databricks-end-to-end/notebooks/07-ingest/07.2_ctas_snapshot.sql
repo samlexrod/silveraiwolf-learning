@@ -83,8 +83,11 @@ ORDER BY t;
 -- MAGIC   writing to silver tables directly from ingestion. If you write directly from ingestion, you'll
 -- MAGIC   introduce failures due to schema changes or corrupt records in data sources."* A clean OLTP still
 -- MAGIC   evolves (columns added/renamed/retyped) — bronze absorbs that at the edge.
--- MAGIC - **Single source of truth + replay/audit.** Bronze *"serves as the single source of truth, preserving
--- MAGIC   the data's fidelity"* and *"enables reprocessing and auditing by retaining all historical data."*
+-- MAGIC - **Single source of truth + fidelity.** Bronze *"serves as the single source of truth, preserving the
+-- MAGIC   data's fidelity"* — a faithful, governed copy you reprocess silver/gold from without re-touching the
+-- MAGIC   source. ⚠️ The docs' *"reprocessing and auditing by retaining all historical data"* is the **append/CDC**
+-- MAGIC   property (`07.3`–`07.5`), **not** this CTAS snapshot — overwrite keeps only current state (plus Delta
+-- MAGIC   *version* time-travel, bounded by retention). See **Q2**.
 -- MAGIC - **OLTP/OLAP separation** (our specific reason): analytics read this Delta copy, never the live Postgres.
 -- MAGIC
 -- MAGIC And the honest caveat — the layers are a guideline, not a law: *"Following the medallion architecture is a
