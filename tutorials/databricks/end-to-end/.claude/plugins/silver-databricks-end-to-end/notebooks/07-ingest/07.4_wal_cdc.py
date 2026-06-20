@@ -12,8 +12,8 @@
 # MAGIC `test_decoding` slot consumed in **batch** via `pg_logical_slot_get_changes(...)` works.
 # MAGIC
 # MAGIC > ⚠️ **SLOT RETENTION RISK.** A logical slot pins WAL until consumed. If you create it and walk away,
-# MAGIC > WAL grows unbounded → storage/quota pressure. This notebook **consumes** (advances) every run and has
-# MAGIC > a **monitor** cell + a **teardown** cell. **Drop the slot if you pause the tutorial.**
+# MAGIC > WAL grows unbounded → storage/quota pressure. This notebook **consumes** (advances) every run, has a
+# MAGIC > **monitor** cell, and **auto-drops the slot in the teardown cell (§6) on Run All** — so nothing lingers.
 # MAGIC >
 # MAGIC > ℹ️ `test_decoding` emits **plain text** (not JSON). Parsing is intentionally light — we store the
 # MAGIC > decoded change + its operation/table. `wal2json`/`pgoutput` would be cleaner but aren't available here.
@@ -152,14 +152,17 @@ with pg() as c, c.cursor() as cur:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 6 — ⚠️ Teardown — run this when you pause/finish (drops the slot, frees WAL)
-# MAGIC Leaving the slot is the only real risk. Uncomment + run to drop it; recreate anytime via cell 1.
+# MAGIC ## 6 — ✅ Teardown — drops the slot, frees WAL (runs on **Run All**)
+# MAGIC Leaving the slot is the only real risk, so this cell is **active**: every Run All creates the slot
+# MAGIC (cell 1), demos + consumes it, then drops it here — nothing lingers to pin WAL. Cell 1 recreates it
+# MAGIC idempotently next run. **Comment this out only if** you want the slot to persist between runs to watch
+# MAGIC ongoing capture (then remember to drop it manually when you pause).
 
 # COMMAND ----------
 
-# with pg() as c, c.cursor() as cur:
-#     cur.execute("SELECT pg_drop_replication_slot(%s)", (SLOT,))
-#     print(f"dropped slot {SLOT}")
+with pg() as c, c.cursor() as cur:
+    cur.execute("SELECT pg_drop_replication_slot(%s)", (SLOT,))
+    print(f"dropped slot {SLOT}")
 
 # COMMAND ----------
 
