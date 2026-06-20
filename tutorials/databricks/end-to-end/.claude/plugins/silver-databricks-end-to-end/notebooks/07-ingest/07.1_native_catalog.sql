@@ -88,19 +88,30 @@ ORDER BY principal_financed DESC;
 -- MAGIC but not everything analytics needs. You **materialize a Delta copy** when you want:
 -- MAGIC
 -- MAGIC - **History + time-travel** — the catalog shows Postgres *as it is now*; Delta retains versions (`VERSION AS OF`).
--- MAGIC - **Decoupling** — heavy analytical scans shouldn't load the operational database; **bronze** isolates them.
+-- MAGIC - **Columnar format for big scans** — the native catalog reads **row-store Postgres** through a Postgres endpoint;
+-- MAGIC   Delta is **columnar**, so heavy analytical scans are far cheaper once materialized.
+-- MAGIC - **Decouple OLTP load** — today, native scans read through a Postgres endpoint (default: the **primary**), so heavy
+-- MAGIC   scans compete with transactions. The GA way to isolate that load is a **Lakebase read replica** (zero-copy, same
+-- MAGIC   storage, independent compute); landing **bronze** removes the OLTP from the analytical read path entirely.
 -- MAGIC - **The medallion** — stage 08 builds `silver`/`gold` from a **stable, governed bronze** Delta layer, not a live link.
 -- MAGIC - **Change capture** — deletes/updates *over time* (`07.3` watermark, `07.4` WAL, `07.5` CDF) — a point-in-time read can't see them.
 -- MAGIC
--- MAGIC **Rule of thumb: native to _query_ now; Delta to _govern history_ and power the medallion.** With clean,
--- MAGIC modest OLTP like Silverline's, you could even analyze straight off this catalog — we still land bronze to
--- MAGIC teach the pattern and get the decoupling/replay benefits.
+-- MAGIC > 🆕 **Where this is heading — LTAP (pre-GA):** at **DAIS 2026** Databricks announced **LTAP**, where operational
+-- MAGIC > data lands directly in **Delta/Iceberg** so analytical engines read the *same copy* with **strict isolation** and
+-- MAGIC > **no ETL or replicas**. It's **not GA yet** (and the registered catalog here is still the `MANAGED_ONLINE_CATALOG`
+-- MAGIC > pushdown model). When LTAP ships, the decouple-via-replica/bronze step collapses into the storage layer; until
+-- MAGIC > then, read replicas (load isolation) + bronze (format/history) are the GA path.
+-- MAGIC
+-- MAGIC **Rule of thumb: native to _query_ now; Delta to _govern history_, get columnar scans, and power the medallion.**
+-- MAGIC With clean, modest OLTP like Silverline's you could analyze straight off this catalog (or a read replica) — we still
+-- MAGIC land bronze to teach the pattern and get the history/replay + medallion benefits.
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ✅ You queried Silverline's live operational data through Unity Catalog with **zero ETL** — the LTAP
--- MAGIC native path, the default way to read Lakebase.
+-- MAGIC ✅ You queried Silverline's live operational data through Unity Catalog with **zero ETL** — the native
+-- MAGIC Lakebase read path (today's `MANAGED_ONLINE_CATALOG` pushdown model; full **LTAP** storage-unification was
+-- MAGIC announced at DAIS 2026 and is **pre-GA**).
 -- MAGIC
 -- MAGIC ➡️ Next: **`07.2_ctas_snapshot`** — materialize this same data into a governed Delta **bronze** that the
 -- MAGIC medallion builds on (and the baseline the CDC patterns refine).
