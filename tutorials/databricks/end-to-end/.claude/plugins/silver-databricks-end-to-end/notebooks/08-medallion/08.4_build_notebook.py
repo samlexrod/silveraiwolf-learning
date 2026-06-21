@@ -52,6 +52,14 @@ print(NAME, "->", run.state.result_state, "|", run.state.life_cycle_state)
 for t in run.tasks:
     print(f"  {t.task_key:8} {t.state.life_cycle_state}/{t.state.result_state}")
 
+# Clickable links to the Job + this run (derived from the workspace URL — no hardcoded id).
+host = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
+displayHTML(
+    f'🔗 <a href="{host}/jobs/{job_id}" target="_blank">Open <b>silverline-notebook-job</b></a> &nbsp;·&nbsp; '
+    f'<a href="{host}/jobs/{job_id}/runs/{run.run_id}" target="_blank">this run</a> '
+    f'(silver→gold task DAG, per-task logs)'
+)
+
 # COMMAND ----------
 
 # MAGIC %sql

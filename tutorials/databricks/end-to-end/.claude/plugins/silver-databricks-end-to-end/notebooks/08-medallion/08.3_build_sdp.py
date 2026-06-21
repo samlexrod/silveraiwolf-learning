@@ -55,6 +55,14 @@ else:
 
 upd = w.pipelines.start_update(pipeline_id=pid).update_id
 print(f"update {upd} — first run cold-starts; 'CREATED' can persist 10+ min before progress (not a failure)")
+
+# Clickable link to the pipeline — watch it live here while the cold start runs (derived, no hardcoded id).
+host = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
+displayHTML(
+    f'🔗 <a href="{host}/pipelines/{pid}" target="_blank">Open <b>silverline-medallion-sdp</b></a> '
+    f'(flow graph, per-table progress, data-quality expectations) — watch the cold start here.'
+)
+
 for _ in range(100):   # ~25 min: cold start can sit in CREATED for 10+ min before SETTING_UP_TABLES
     st = w.pipelines.get_update(pipeline_id=pid, update_id=upd).update.state.value
     print("  ", st)
