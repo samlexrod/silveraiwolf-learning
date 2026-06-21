@@ -26,8 +26,17 @@ w = WorkspaceClient()
 
 jobs = list(w.jobs.list(name="silverline-dbt-job"))
 assert jobs, "Job 'silverline-dbt-job' not found — create it via CLI (provisioning)."
-run = w.jobs.run_now(job_id=jobs[0].job_id).result()
+job_id = jobs[0].job_id
+run = w.jobs.run_now(job_id=job_id).result()
 print("silverline-dbt-job:", run.state.result_state, "|", run.state.life_cycle_state)
+
+# Clickable links to the Job + this run (derived from the workspace URL — no hardcoded id).
+host = "https://" + spark.conf.get("spark.databricks.workspaceUrl")
+displayHTML(
+    f'🔗 <a href="{host}/jobs/{job_id}" target="_blank">Open <b>silverline-dbt-job</b></a> &nbsp;·&nbsp; '
+    f'<a href="{host}/jobs/{job_id}/runs/{run.run_id}" target="_blank">this run</a> '
+    f'(dbt logs, task graph, lineage)'
+)
 
 # COMMAND ----------
 
@@ -36,6 +45,16 @@ print("silverline-dbt-job:", run.state.result_state, "|", run.state.life_cycle_s
 # MAGIC A `dbt_task`: `commands=["dbt build --select tag:medallion"]`, `source=WORKSPACE`,
 # MAGIC `project_directory=.../dbt_project`, `warehouse_id=<Starter Warehouse>`, `catalog=silverline`,
 # MAGIC `schema=silver`. Open **Jobs & Pipelines → silverline-dbt-job** to see the dbt run logs + lineage.
+# MAGIC
+# MAGIC > 🔎 **Seeing the SQL dbt runs.** dbt models are **Jinja templates** (`{{ ref('silver_contracts') }}`,
+# MAGIC > `{{ config(...) }}`) at the project path (`dbt_project/models/`) — not the final SQL. To see the **exact
+# MAGIC > compiled SQL** dbt executed, open **SQL → Query History** and filter the Starter Warehouse: each
+# MAGIC > statement carries a `/* {"app":"dbt", "node_id":"model.silverline.…"} */` comment and shows the resolved
+# MAGIC > `create or replace table … as …` (the `{{ ref() }}` already rewritten to the real table). So on
+# MAGIC > Databricks you **don't** need dbt Cloud or a local `dbt compile` to read what ran — it's in Query
+# MAGIC > History. *(For completeness: `dbt compile` also writes the compiled SQL to `target/compiled/`, and dbt
+# MAGIC > Cloud shows it in its IDE.)*
+# MAGIC
 # MAGIC Verify the gold it built:
 
 # COMMAND ----------
