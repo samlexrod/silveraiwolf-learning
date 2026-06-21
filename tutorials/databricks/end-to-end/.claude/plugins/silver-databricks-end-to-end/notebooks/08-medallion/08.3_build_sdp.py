@@ -43,13 +43,19 @@ else:
 
 # COMMAND ----------
 
-# MAGIC %md ## Run it + wait
+# MAGIC %md
+# MAGIC ## Run it + wait
+# MAGIC > ⏳ **First run is slow — be patient.** A serverless DLT pipeline **cold-starts**: the update can sit in
+# MAGIC > **`CREATED`** for **10+ minutes with no visible progress** before it moves to `SETTING_UP_TABLES` →
+# MAGIC > `RUNNING` → `COMPLETED` (verified live on Free Edition: ~12 min to first progress). **Don't assume it
+# MAGIC > failed** if `CREATED` lingers — it's provisioning compute. The loop below waits up to ~25 min; you can
+# MAGIC > also watch it live in **Jobs & Pipelines → silverline-medallion-sdp**. Re-runs are faster (compute warm).
 
 # COMMAND ----------
 
 upd = w.pipelines.start_update(pipeline_id=pid).update_id
-print(f"update {upd}")
-for _ in range(40):
+print(f"update {upd} — first run cold-starts; 'CREATED' can persist 10+ min before progress (not a failure)")
+for _ in range(100):   # ~25 min: cold start can sit in CREATED for 10+ min before SETTING_UP_TABLES
     st = w.pipelines.get_update(pipeline_id=pid, update_id=upd).update.state.value
     print("  ", st)
     if st in ("COMPLETED", "FAILED", "CANCELED"):
