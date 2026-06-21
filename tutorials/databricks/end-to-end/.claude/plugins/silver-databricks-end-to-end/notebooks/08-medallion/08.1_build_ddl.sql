@@ -1,10 +1,13 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # Stage 8 · 08.1 — **DDL**: define the `_nb` medallion tables (empty)
--- MAGIC Pure **DDL** — just `CREATE TABLE IF NOT EXISTS` for the silver + gold `_nb` tables (structure only,
--- MAGIC no data). The **ELT** that loads them lives in `notebook_project/` and is run by `silverline-notebook-job`
--- MAGIC (built by `08.4_build_notebook`). Separating DDL (structure) from ELT (load) is the point. Run on the
--- MAGIC **SQL warehouse**. Idempotent.
+-- MAGIC Pure **DDL** (**Data Definition Language** — the SQL that defines *structure*: `CREATE` / `ALTER` / `DROP`
+-- MAGIC tables, as opposed to **DML**, Data *Manipulation* Language — `INSERT` / `UPDATE` / `DELETE` that changes
+-- MAGIC *data*). Here it's just `CREATE TABLE IF NOT EXISTS` for the silver + gold `_nb` tables (structure only,
+-- MAGIC no data). The **ELT** (**Extract, Load, Transform** — load raw, then transform *in* the warehouse) that
+-- MAGIC fills them lives in `notebook_project/` and is run by `silverline-notebook-job` (built by
+-- MAGIC `08.4_build_notebook`). Separating DDL (structure) from ELT (load) is the point. Run on the **SQL
+-- MAGIC warehouse**. Idempotent.
 
 -- COMMAND ----------
 -- MAGIC %md ## silver table definitions
