@@ -52,9 +52,11 @@ GROUP BY region ORDER BY overdue_ratio DESC;
 
 -- MAGIC %md
 -- MAGIC ## 2 — Open the live AI/BI dashboard
--- MAGIC Already created + published for you (`lakeview create` → `publish --embed-credentials`). Open it:
+-- MAGIC Already created + published for you (`lakeview create` → `publish --embed-credentials` via
+-- MAGIC `scripts/provision_ai_bi.sh`). The link below is filled in with **your** dashboard id when the tutorial
+-- MAGIC provisions it — it's the `published →` URL the script prints (ids are per-workspace, never shared):
 -- MAGIC
--- MAGIC 👉 **[Silverline Capital — Portfolio (governed metrics)](/dashboardsv3/01f16a399b5116abb2d3293e9060a10d/published)**
+-- MAGIC 👉 **[Silverline Capital — Portfolio (governed metrics)](/dashboardsv3/<DASHBOARD_ID>/published)**
 -- MAGIC
 -- MAGIC You'll see the three tiles above as charts. Edit one and you'll find each tile bound to the
 -- MAGIC `portfolio_metrics` dataset — the governed definition, not a per-tile `SUM()` that could drift.
@@ -63,9 +65,11 @@ GROUP BY region ORDER BY overdue_ratio DESC;
 
 -- MAGIC %md
 -- MAGIC ## 3 — Open the Genie space + ask in natural language
--- MAGIC A Genie space scoped to the **metric view** was created for you (`genie create-space`). Open it:
+-- MAGIC A Genie space scoped to the **metric view** was created for you (`genie create-space` via
+-- MAGIC `scripts/provision_ai_bi.sh`). The link is filled in with **your** space id when provisioned (the
+-- MAGIC `space_id →` URL the script prints):
 -- MAGIC
--- MAGIC 👉 **[Silverline Capital — Portfolio Genie](/genie/rooms/01f16a39c0fa1592b293e173ace9d5ee)**
+-- MAGIC 👉 **[Silverline Capital — Portfolio Genie](/genie/rooms/<GENIE_SPACE_ID>)**
 -- MAGIC
 -- MAGIC Try the sample questions (or your own):
 -- MAGIC - *"What is the total billed by segment?"*

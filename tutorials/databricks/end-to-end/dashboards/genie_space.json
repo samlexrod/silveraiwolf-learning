@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "data_sources": {
+    "tables": [
+      { "identifier": "silverline.gold.portfolio_metrics" }
+    ]
+  }
+}
