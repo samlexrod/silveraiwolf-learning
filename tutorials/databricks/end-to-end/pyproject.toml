@@ -1,0 +1,15 @@
+[project]
+name = "databricks-free-edition"
+version = "0.1.0"
+description = "Databricks Free Edition workload tutorials — shared tooling (dbt + SQL + SDK)."
+requires-python = ">=3.10"
+dependencies = [
+    "dbt-databricks>=1.8",
+    "databricks-sql-connector>=3.4",
+    "databricks-sdk>=0.30",
+    "psycopg[binary]>=3.2",
+    "reportlab>=4.0",
+]
+
+[tool.uv]
+package = false

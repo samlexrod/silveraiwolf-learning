@@ -1,0 +1,38 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # Stage 04 — provision  ·  *CLI plumbing (no UI step)*
+-- MAGIC
+-- MAGIC Stood up the **Lakebase Postgres** project — Silverline's operational (OLTP) source. Provisioning is
+-- MAGIC done with the `databricks postgres` CLI (the **Autoscaling project** API — production = automation, not
+-- MAGIC click-ops), so it's run for you. This note records what it did.
+-- MAGIC
+-- MAGIC ## What happened
+-- MAGIC - `databricks postgres create-project silverline-oltp --json '{"spec":{"pg_version":17}}'` → **PostgreSQL 17**.
+-- MAGIC   (The older `database create-database-instance` only gives **PG16** — avoid it; CDF needs PG17.)
+-- MAGIC - Verified connectivity over SSL, using a minted OAuth token as the password.
+-- MAGIC - Wrote non-secret connection details to the repo `.env`.
+-- MAGIC
+-- MAGIC ## The project
+-- MAGIC | Key | Value |
+-- MAGIC |-----|-------|
+-- MAGIC | Project | `silverline-oltp` (Autoscaling, **PG17**; idles to ~0) |
+-- MAGIC | Endpoint | `projects/silverline-oltp/branches/production/endpoints/primary` |
+-- MAGIC | Host | `ep-…cloud.databricks.com` (yours — from the Lakebase **Connect** dialog / `.env`) |
+-- MAGIC | Database | `databricks_postgres` · port `5432` · sslmode `require` |
+-- MAGIC | Role | `<your-databricks-email>` (your identity) |
+-- MAGIC | Password | a short-lived OAuth token (≈1h), minted on demand — **not** stored |
+-- MAGIC
+-- MAGIC > 🧠 **"Mint"** = ask a trusted issuer for a **brand-new, short-lived credential** on demand (like a mint
+-- MAGIC > stamping a fresh coin) — so nothing static is stored or committed and a leak expires fast.
+-- MAGIC >
+-- MAGIC > Mint a token (CLI): `databricks postgres generate-database-credential
+-- MAGIC > projects/silverline-oltp/branches/production/endpoints/primary` → `.token`. Inside a notebook, via the
+-- MAGIC > SDK: `w.postgres.get_endpoint(endpoint)` + `w.postgres.generate_database_credential(endpoint)` (as
+-- MAGIC > `05-seed/05.1_seed_oltp` does).
+-- MAGIC
+-- MAGIC ➡️ Next: `05-seed` (load the 9-table OLTP + land the documents).
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

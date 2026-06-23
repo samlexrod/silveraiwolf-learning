@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "silver-databricks-end-to-end",
+  "owner": {
+    "name": "SilverAIWolf"
+  },
+  "description": "Databricks Free Edition workload tutorial ($0, serverless, no cloud).",
+  "plugins": [
+    {
+      "name": "silver-databricks-end-to-end",
+      "source": "./plugins/silver-databricks-end-to-end",
+      "description": "Databricks Free Edition — one $0, serverless-only, no-cloud tutorial walked as 12 ordered stages: setup (CLI · UC · dbt) → lakebase (serverless Postgres 17 + Data API) → lakehouse (medallion 3 ways (notebook/dbt/SDP) + CDC) → analytics (Metric Views + AI/BI + Genie). Start with /silver-databricks-end-to-end:start."
+    }
+  ]
+}

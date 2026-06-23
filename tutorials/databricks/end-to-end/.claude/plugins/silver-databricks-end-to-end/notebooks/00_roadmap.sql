@@ -1,0 +1,52 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # 🗺️ Silverline Capital lakehouse — roadmap
+-- MAGIC
+-- MAGIC Your hands-on home for the **Databricks Free Edition** tutorial. Each stage lives in an ordered
+-- MAGIC `NN-<name>` folder below this notebook. Walk them **in number order, 01 → 12**.
+-- MAGIC
+-- MAGIC | # | Stage | Phase | You run in the workspace? | Status |
+-- MAGIC |---|-------|-------|---------------------------|--------|
+-- MAGIC | 01 | connect        | Setup     | CLI plumbing — see `01-connect/01_overview` | ✅ |
+-- MAGIC | 02 | landing-zone   | Setup     | ▶️ **notebook** `02-landing-zone/02_landing_zone` | ✅ |
+-- MAGIC | 03 | project        | Setup     | local tooling — see `03-project/03_overview` | ✅ |
+-- MAGIC | 04 | provision      | Lakebase  | CLI plumbing — see `04-provision/04_overview` | ✅ |
+-- MAGIC | 05 | seed           | Lakebase  | ▶️ **notebooks** `05.1_seed_oltp` → `05.2_data_model` → `05.3_documents` | ✅ |
+-- MAGIC | 06 | data-api       | Lakebase  | enable (UI) + SP (CLI); ▶️ notebook `06-data-api/06.1_data_api_demo` | ✅ |
+-- MAGIC | 07 | ingest         | Lakehouse | ▶️ `07.1_native_catalog`(zero-ETL) · `07.2_ctas_snapshot` · `07.3_watermark_cdc` · `07.4_wal_cdc` · `07.5_lakebase_cdf` | ✅ |
+-- MAGIC | 08 | medallion      | Lakehouse | `08.1_build_ddl` · `08.2_build_dbt` · `08.3_build_sdp` · `08.4_build_notebook` · `08.5_parity` | ✅ |
+-- MAGIC | 09 | refresh        | Lakehouse | ▶️ notebook `09-refresh/09.1_refresh` | ✅ |
+-- MAGIC | 10 | business-layer | Analytics | ▶️ `10-business-layer/10.1_business_layer` | ✅ |
+-- MAGIC | 11 | semantic       | Analytics | ▶️ `11.1_semantic` · `11.2_why_metrics` | ✅ |
+-- MAGIC | 12 | ai-bi          | Analytics | ▶️ `12.1_ai_bi` (dashboard+Genie via CLI) · `12.2_genie_programmatic` | ✅ |
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## How this is organised
+-- MAGIC - **Every stage has a folder** `NN-<name>` — so the tree always reads in order, with no gaps.
+-- MAGIC - **Within a stage, notebooks are numbered** `NN.1_…`, `NN.2_…` in the order you run them (e.g. run
+-- MAGIC   `05.1_seed_oltp` first, then read `05.2_data_model`).
+-- MAGIC - **CLI / plumbing stages** (connect, project, provision) are run *for* you with the `databricks`
+-- MAGIC   CLI — that's how infra is built in production (automation, not click-ops). Their folder holds a
+-- MAGIC   short **`_overview`** note recording what was done + the key values.
+-- MAGIC - **Workload stages** ship **runnable notebooks** you execute here in the workspace — that's where the
+-- MAGIC   learning happens (watch Catalog Explorer / lineage update as you go).
+-- MAGIC
+-- MAGIC ## Key names (decided live)
+-- MAGIC | Thing | Value |
+-- MAGIC |-------|-------|
+-- MAGIC | Unity Catalog | `silverline` — schemas `bronze` / `silver` / `gold` |
+-- MAGIC | Managed volume | `silverline.bronze.files` (`/Volumes/silverline/bronze/files/`) |
+-- MAGIC | Lakebase Postgres | project `silverline-oltp` (PostgreSQL 17, Autoscaling) |
+-- MAGIC | Lakebase UC catalog | `lakebase_silverline_oltp` (registered in the `ingest` stage) |
+-- MAGIC | Auth | OAuth (the `free` CLI profile / notebook identity) — no PATs |
+-- MAGIC
+-- MAGIC ## The four phases
+-- MAGIC **Setup** (01–03) → **Lakebase** (04–06) → **Lakehouse** (07–09) → **Analytics** (10–12).
+-- MAGIC Each builds on the last. Progress is also tracked in the repo's `PROGRESS.md`.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*

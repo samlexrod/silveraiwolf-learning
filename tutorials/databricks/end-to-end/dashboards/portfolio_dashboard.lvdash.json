@@ -1,0 +1,126 @@
+{
+  "datasets": [
+    {
+      "name": "billed_by_segment",
+      "displayName": "Total billed by segment",
+      "queryLines": [
+        "SELECT segment,\n",
+        "       MEASURE(total_billed)  AS total_billed,\n",
+        "       MEASURE(invoice_count) AS invoice_count\n",
+        "FROM silverline.gold.portfolio_metrics\n",
+        "GROUP BY segment ORDER BY total_billed DESC"
+      ]
+    },
+    {
+      "name": "billed_by_contract_type",
+      "displayName": "Total billed by contract type",
+      "queryLines": [
+        "SELECT contract_type, MEASURE(total_billed) AS total_billed\n",
+        "FROM silverline.gold.portfolio_metrics\n",
+        "GROUP BY contract_type ORDER BY total_billed DESC"
+      ]
+    },
+    {
+      "name": "overdue_by_region",
+      "displayName": "Overdue ratio by region",
+      "queryLines": [
+        "SELECT region, MEASURE(overdue_ratio) AS overdue_ratio\n",
+        "FROM silverline.gold.portfolio_metrics\n",
+        "GROUP BY region ORDER BY overdue_ratio DESC"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "portfolio",
+      "displayName": "Portfolio (governed metrics)",
+      "layout": [
+        {
+          "widget": {
+            "name": "tile_billed_by_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "billed_by_segment",
+                  "fields": [
+                    { "name": "segment", "expression": "`segment`" },
+                    { "name": "total_billed", "expression": "`total_billed`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "segment", "scale": { "type": "categorical" }, "displayName": "Segment" },
+                "y": { "fieldName": "total_billed", "scale": { "type": "quantitative" }, "displayName": "Total billed" }
+              },
+              "frame": { "showTitle": true, "title": "Total billed by segment" }
+            }
+          },
+          "position": { "x": 0, "y": 0, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "tile_billed_by_contract_type",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "billed_by_contract_type",
+                  "fields": [
+                    { "name": "contract_type", "expression": "`contract_type`" },
+                    { "name": "total_billed", "expression": "`total_billed`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "contract_type", "scale": { "type": "categorical" }, "displayName": "Contract type" },
+                "y": { "fieldName": "total_billed", "scale": { "type": "quantitative" }, "displayName": "Total billed" }
+              },
+              "frame": { "showTitle": true, "title": "Total billed by contract type" }
+            }
+          },
+          "position": { "x": 3, "y": 0, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "tile_overdue_by_region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "overdue_by_region",
+                  "fields": [
+                    { "name": "region", "expression": "`region`" },
+                    { "name": "overdue_ratio", "expression": "`overdue_ratio`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "region", "scale": { "type": "categorical" }, "displayName": "Region" },
+                "y": { "fieldName": "overdue_ratio", "scale": { "type": "quantitative" }, "displayName": "Overdue ratio" }
+              },
+              "frame": { "showTitle": true, "title": "Overdue ratio by region (collections risk)" }
+            }
+          },
+          "position": { "x": 0, "y": 6, "width": 6, "height": 6 }
+        }
+      ]
+    }
+  ],
+  "uiSettings": { "theme": { "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED" } }
+}

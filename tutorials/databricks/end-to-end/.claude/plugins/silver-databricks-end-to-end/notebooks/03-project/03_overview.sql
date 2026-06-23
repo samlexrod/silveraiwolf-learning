@@ -1,0 +1,27 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # Stage 03 — project  ·  *local tooling (no UI step)*
+-- MAGIC
+-- MAGIC This stage wires the **local repo** (on your machine) to your workspace — `mise` + `uv` + `dbt`. It's
+-- MAGIC local tooling, run for you, so there's nothing to execute here. This note records what it did.
+-- MAGIC
+-- MAGIC ## What happened
+-- MAGIC - Created `tutorials/databricks/end-to-end/.env` (non-secret host + warehouse id; gitignored).
+-- MAGIC - Installed Python deps with `uv` (`dbt-databricks`, `databricks-sql-connector`, `databricks-sdk`).
+-- MAGIC - dbt profile `databricks_free` → the **Starter Warehouse** + the **`silverline`** catalog, over **OAuth**
+-- MAGIC   (`auth_type: oauth`) — no PAT. `dbt debug` → *All checks passed!*
+-- MAGIC - Smoke test `SELECT current_catalog(), current_user()` → `silverline | samlexrod@gmail.com`.
+-- MAGIC
+-- MAGIC ## Handy local commands (run from the repo)
+-- MAGIC | Command | Does |
+-- MAGIC |---------|------|
+-- MAGIC | `mise run dbt:debug` | prove the dbt connection |
+-- MAGIC | `mise run sql '<SQL>'` | one statement on the Starter Warehouse |
+-- MAGIC | `mise run dbt:run` | build dbt models |
+-- MAGIC
+-- MAGIC ➡️ Next: `04-provision` (stand up Lakebase). End of the **Setup** phase.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 🐺 *SilverAIWolf Learning — `silver-databricks-end-to-end`*
