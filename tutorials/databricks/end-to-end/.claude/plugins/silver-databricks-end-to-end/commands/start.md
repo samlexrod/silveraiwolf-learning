@@ -56,10 +56,28 @@ Ground rules (carry through every stage):
   - **Install CLIs with `winget`, not `brew`** — e.g. `winget install --id Databricks.DatabricksCLI -e`.
   - **`jq` is not installed.** Don't pipe to `jq`; run the command with `-o json` and parse with PowerShell
     `ConvertFrom-Json` (or `winget install jqlang.jq` first).
-  - **`databricks api post --json @file` rejects a UTF-8 BOM.** PowerShell 5.1's `Set-Content -Encoding utf8`
-    writes a BOM, which the CLI parser fails on (`invalid character 'ï'`). Write JSON payloads **BOM-less**:
-    `[System.IO.File]::WriteAllText($path, $json, (New-Object System.Text.UTF8Encoding($false)))`. This is the
-    standard way to run SQL headless on Free Edition (`POST /api/2.0/sql/statements` with the warehouse id).
+  - **Always pass `--json` as a BOM-less `@file`, never inline.** Two Windows traps: (a) inline
+    `--json '{"k":"v"}'` loses its double quotes through PowerShell's native-arg quoting (CLI sees `{k...` →
+    `invalid character`); (b) `Set-Content -Encoding utf8` writes a UTF-8 **BOM** the CLI rejects
+    (`invalid character 'ï'`). So write the JSON to a temp file BOM-less and reference it with `@`:
+    `[System.IO.File]::WriteAllText($path, $json, (New-Object System.Text.UTF8Encoding($false)))` then
+    `databricks ... --json "@$path"`. Applies to `api post /api/2.0/sql/statements`, `postgres create-project`,
+    and every other `--json` call.
+  - **`psql` is not installed.** For Lakebase/Postgres connectivity checks, use **psycopg** (already in the
+    project venv) via `uv run python` — connect with `sslmode="require"` and the minted token as the password —
+    instead of the stage's `psql` one-liners.
+  - **Set `PYTHONUTF8=1` before running any tutorial Python script.** They print `✓`/emoji, and Windows
+    Python defaults stdout to **cp1252**, which crashes with `UnicodeEncodeError: '✓'` *after* doing the
+    work (misleading non-zero exit). `$env:PYTHONUTF8 = "1"` (or `PYTHONIOENCODING=utf-8`) fixes it. The seed
+    scripts are idempotent, so a re-run with UTF-8 mode is safe.
+  - **Doc/volume uploads want a PAT, but we're OAuth-only.** `generate_contract_docs.py`'s uploader needs
+    `DATABRICKS_TOKEN`. Instead, generate with `--local-only` then upload via the OAuth CLI:
+    `databricks --profile free fs cp <localdir> dbfs:/Volumes/<cat>/<schema>/<vol>/<sub> --recursive --overwrite`.
+  - **REST/HTTP steps use `curl` + `jq` + bash (`set -a; . ./.env`, `awk`).** On Windows use PowerShell
+    `Invoke-RestMethod` / `Invoke-WebRequest` instead. Two specifics for the data-api stage: read the
+    workspace/org id from the **`X-Databricks-Org-Id` response header** of a SCIM `Me` call
+    (`(Invoke-WebRequest …).Headers['x-databricks-org-id']`), and a Databricks **secret value comes back
+    base64-encoded** — `[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((... secrets get-secret ... -o json | ConvertFrom-Json).value))`.
   - **`mise run <task> '<multi-word arg>'` mangles the quoted argument on Windows** — only the first token
     reaches the task (e.g. `mise run sql 'SELECT current_catalog()'` sends just `SELECT` → parse error). For
     arg-bearing tasks (`sql`, `dbt:run -- …`, `docs:seed -- …`), **bypass mise**: call the underlying script
