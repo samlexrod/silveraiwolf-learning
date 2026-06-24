@@ -30,7 +30,14 @@ claude plugin marketplace add samlexrod/silveraiwolf-learning
 claude plugin install silver-databricks-end-to-end@silveraiwolf
 ```
 
-Then run `/silver-databricks-end-to-end:start` and walk the 12 stages.
+After installing, **restart Claude Code** so the plugin's slash commands register. (`/reload-skills`
+refreshes *skills* in the current session, but newly installed *commands* generally need a full restart —
+if `/silver-databricks-end-to-end:start` reports "Unknown command", restart and try again.) Then run
+`/silver-databricks-end-to-end:start` and walk the 12 stages.
+
+> 🪟 **Windows:** the `claude` CLI ships inside the desktop app and may not be on your `PATH`. If `claude`
+> isn't found, invoke it by full path, e.g.
+> `& "$env:APPDATA\Claude\claude-code\<version>\claude.exe" plugin install silver-databricks-end-to-end@silveraiwolf`.
 
 ## 🗂️ Repository structure
 

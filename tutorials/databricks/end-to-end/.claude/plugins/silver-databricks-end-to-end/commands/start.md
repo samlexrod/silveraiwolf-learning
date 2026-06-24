@@ -47,6 +47,27 @@ Ground rules (carry through every stage):
   recommend or default to the workspace UI for provisioning; mention it only for awareness. This is the
   complement to the notebooks rule: **infra = CLI/code; data workloads = notebooks the learner runs.**
 - ⚠️ **Verify, don't assume** — Free Edition moves fast and docs lag; if a step differs, adapt.
+- 🪟 **Windows environment (don't re-derive — these are confirmed deltas):** when the learner is on Windows,
+  the example commands assume macOS/Linux, so adapt rather than guess:
+  - **CLIs may not be on the shell `PATH`.** The `databricks` CLI (winget) and the `claude` CLI (bundled in
+    the desktop app at `%APPDATA%\Claude\claude-code\<version>\claude.exe`) often aren't on `PATH`. Refresh
+    `PATH` from the registry (`$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`)
+    or call by full path; a freshly opened shell also picks up winget's PATH edits.
+  - **Install CLIs with `winget`, not `brew`** — e.g. `winget install --id Databricks.DatabricksCLI -e`.
+  - **`jq` is not installed.** Don't pipe to `jq`; run the command with `-o json` and parse with PowerShell
+    `ConvertFrom-Json` (or `winget install jqlang.jq` first).
+  - **`databricks api post --json @file` rejects a UTF-8 BOM.** PowerShell 5.1's `Set-Content -Encoding utf8`
+    writes a BOM, which the CLI parser fails on (`invalid character 'ï'`). Write JSON payloads **BOM-less**:
+    `[System.IO.File]::WriteAllText($path, $json, (New-Object System.Text.UTF8Encoding($false)))`. This is the
+    standard way to run SQL headless on Free Edition (`POST /api/2.0/sql/statements` with the warehouse id).
+  - **`mise run <task> '<multi-word arg>'` mangles the quoted argument on Windows** — only the first token
+    reaches the task (e.g. `mise run sql 'SELECT current_catalog()'` sends just `SELECT` → parse error). For
+    arg-bearing tasks (`sql`, `dbt:run -- …`, `docs:seed -- …`), **bypass mise**: call the underlying script
+    via `uv` with a properly PowerShell-quoted arg. Arg-less tasks (`setup`, `dbt:debug`) work fine through mise.
+  - **A direct `uv run` does NOT load `.env`** (only `mise` injects `[env]._.file`). Before calling a script
+    directly, set the non-secret vars yourself from `.env` (e.g. `DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`).
+  - **Prefer the PowerShell tool for CLI calls** (Git Bash also works for POSIX-y bits like the path-resolve
+    and `PROGRESS.md` heredoc). Each stage repeats the specific Windows substitution where it matters.
 - **Never auto-run the whole tutorial.** Advance only on the learner's explicit confirmation.
 
 ## Step 1 — Resolve paths (run this first)
