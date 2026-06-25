@@ -124,7 +124,17 @@ export default function App() {
         )}
       </main>
 
-      <ChatPanel />
+      <ChatPanel
+        step={{
+          id: view,
+          phase: STEPS[idxOf(view)].phase,
+          label: STEPS[idxOf(view)].label,
+          title: TITLES[view],
+          index: idxOf(view) + 1,
+          total: STEPS.length,
+          status: stepState(view),
+        }}
+      />
     </div>
   );
 }

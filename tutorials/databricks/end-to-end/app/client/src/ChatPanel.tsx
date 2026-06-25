@@ -14,7 +14,18 @@ const MODELS = [
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-export default function ChatPanel() {
+// Where the learner is right now — sent with each request so Claude has phase/step context.
+export type StepCtx = {
+  id: string;
+  phase: string;
+  label: string;
+  title: string;
+  index: number;
+  total: number;
+  status: "done" | "current" | "locked";
+};
+
+export default function ChatPanel({ step }: { step?: StepCtx }) {
   const [authMode, setAuthMode] = useState<string>(() => localStorage.getItem(AMODE) ?? "");
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(KEY) ?? "");
   const [keyInput, setKeyInput] = useState("");
@@ -103,7 +114,7 @@ export default function ChatPanel() {
       const resp = await fetch(`http://${SERVER}/api/chat`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ messages: next, model }),
+        body: JSON.stringify({ messages: next, model, step }),
       });
       if (!resp.ok || !resp.body) {
         const err = await resp.json().catch(() => ({ error: resp.statusText }));

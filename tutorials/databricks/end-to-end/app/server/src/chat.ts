@@ -61,6 +61,46 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 const MODELS = new Set(["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5", "claude-opus-4-7"]);
 const DEFAULT_MODEL = "claude-opus-4-8";
 
+// The app condenses the 12-stage tutorial into a few guided views; map each one
+// back to the underlying stages so Claude can answer precisely about where they are.
+type StepCtx = {
+  id?: string;
+  phase?: string;
+  label?: string;
+  title?: string;
+  index?: number;
+  total?: number;
+  status?: "done" | "current" | "locked";
+};
+const VIEW_STAGES: Record<string, string> = {
+  connect: "the connect stage (01)",
+  source: "the Lakebase stages — provision · seed · data-api (04–06)",
+  refresh: "the refresh stage + live change-data streaming (09)",
+  medallion: "the lakehouse stages — ingest · medallion (07–08)",
+  analytics: "the analytics stages — business-layer · semantic · ai-bi (10–12)",
+};
+const clip = (s: unknown, n = 120) => (typeof s === "string" ? s.slice(0, n) : "");
+
+/** One-line "where the learner is" context: workspace connection + the current app view. */
+function liveContext(step?: StepCtx): string {
+  const conn = status();
+  const out: string[] = [];
+  out.push(
+    conn.connected
+      ? `The learner is connected as ${conn.user} (workspace ${conn.workspace}).`
+      : `The learner has NOT connected their workspace yet (still on the Connect step).`,
+  );
+  if (step?.phase && step?.label) {
+    const where = step.index && step.total ? ` (view ${step.index} of ${step.total})` : "";
+    out.push(`In the visual app they are on the "${clip(step.label)}" view in the ${clip(step.phase)} phase${where}: ${clip(step.title)}.`);
+    const stages = step.id && VIEW_STAGES[step.id];
+    if (stages) out.push(`That view maps to ${stages} in the full 12-stage tutorial.`);
+    if (step.status === "done") out.push(`They have already completed this step and are reviewing it.`);
+    else out.push(`This is the step they're actively on — tailor your answer to it unless they ask about something else.`);
+  }
+  return out.join(" ");
+}
+
 export async function chatHandler(req: Request, res: Response): Promise<void> {
   const key = req.header("x-anthropic-key") || (req.body?.apiKey as string | undefined);
   const messages = (req.body?.messages ?? []) as ChatMsg[];
@@ -74,11 +114,8 @@ export async function chatHandler(req: Request, res: Response): Promise<void> {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
-  // give Claude the live connection state so it can tailor answers
-  const conn = status();
-  const sys = conn.connected
-    ? `${SYSTEM}\n\nLive context: the learner is connected as ${conn.user} (workspace ${conn.workspace}).`
-    : `${SYSTEM}\n\nLive context: the learner has NOT connected their workspace yet (still on the Connect step).`;
+  // give Claude the live connection state + the step they're on so it can tailor answers
+  const sys = `${SYSTEM}\n\nLive context: ${liveContext(req.body?.step as StepCtx | undefined)}`;
 
   const model = MODELS.has(req.body?.model) ? (req.body.model as string) : DEFAULT_MODEL;
 
