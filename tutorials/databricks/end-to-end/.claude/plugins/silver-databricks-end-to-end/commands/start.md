@@ -73,6 +73,13 @@ Ground rules (carry through every stage):
   - **Doc/volume uploads want a PAT, but we're OAuth-only.** `generate_contract_docs.py`'s uploader needs
     `DATABRICKS_TOKEN`. Instead, generate with `--local-only` then upload via the OAuth CLI:
     `databricks --profile free fs cp <localdir> dbfs:/Volumes/<cat>/<schema>/<vol>/<sub> --recursive --overwrite`.
+  - **`databricks lakeview create` / `genie create-space` can hang headlessly (ai-bi stage).** Observed on
+    Windows Free Edition: the CLI create blocks with no output (likely waiting on stdin), and even a direct
+    REST `POST /api/2.0/lakeview/dashboards` did not complete, while `GET` (list) returns instantly — i.e. the
+    dashboard-create service was unresponsive on that workspace. Bound any attempt with a timeout, and if it
+    doesn't return, fall back to **creating the dashboard/Genie space in the workspace UI** (the stage is meant
+    for UI exploration anyway): Dashboards → import `dashboards/portfolio_dashboard.lvdash.json`; Genie → new
+    space scoped to `silverline.gold.portfolio_metrics`.
   - **REST/HTTP steps use `curl` + `jq` + bash (`set -a; . ./.env`, `awk`).** On Windows use PowerShell
     `Invoke-RestMethod` / `Invoke-WebRequest` instead. Two specifics for the data-api stage: read the
     workspace/org id from the **`X-Databricks-Org-Id` response header** of a SCIM `Me` call
