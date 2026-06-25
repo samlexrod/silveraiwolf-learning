@@ -1,0 +1,36 @@
+# Silverline Lakehouse Explorer — runs anywhere with Docker.
+#
+#   server  → Apollo GraphQL over Lakebase (headless service-principal auth)
+#   client  → static React/Vite bundle served by nginx
+#
+# Prereqs: fill server/.env with the SP credentials (see server/.env.example):
+#   DATABRICKS_HOST, SP_CLIENT_ID, SP_SECRET, LAKEBASE_HOST, LAKEBASE_USER (= SP id is auto in SP mode)
+# Then:  docker compose up --build   →   open http://localhost:8080
+#
+# Note: the LISTEN/NOTIFY triggers are a one-time owner action — run `npm run setup:notify`
+# once on a machine with the Databricks CLI before relying on the live feed.
+
+services:
+  server:
+    build: ./server
+    env_file:
+      - ./server/.env
+    # The SP secret is passed at runtime from your shell (never written to .env / disk).
+    # Set it before `docker compose up`, e.g. (PowerShell):
+    #   $env:SP_SECRET = "<service-principal secret>"
+    environment:
+      - SP_SECRET=${SP_SECRET:?set SP_SECRET in your shell for headless mode}
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_SERVER: localhost:4000
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped
