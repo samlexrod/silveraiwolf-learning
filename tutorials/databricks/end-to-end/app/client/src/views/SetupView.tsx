@@ -2,6 +2,7 @@ import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useState } from "react";
 import Callout from "../Callout";
+import TutorialGuide from "../TutorialGuide";
 
 const CONFIGURE = gql`
   mutation Configure($workspaceUrl: String!, $token: String!) {
@@ -64,6 +65,36 @@ export default function SetupView({ conn, onConnected }: { conn?: Conn; onConnec
         </p>
         <p>Your token is held in the server process only. It is never written to disk or sent anywhere else.</p>
       </Callout>
+      <TutorialGuide title="How to get your credentials">
+        <ol>
+          <li>
+            Sign in to your <strong>Databricks Free Edition</strong> workspace (
+            <code>https://dbc-xxxxxxxx.cloud.databricks.com</code>). Copy that URL from the browser
+            address bar — you'll need it below.
+          </li>
+          <li>
+            Click your profile icon (top-right of the workspace) → <strong>Settings</strong>.
+          </li>
+          <li>
+            Open <strong>Developer</strong> → <strong>Access tokens</strong> → click{" "}
+            <strong>Generate new token</strong>. Give it a name (e.g. <em>Silverline app</em>) and an
+            expiry of your choice.
+          </li>
+          <li>
+            Copy the token immediately — it starts with <code>dapi…</code> and will not be shown again.
+          </li>
+          <li>
+            Paste the workspace URL and the token into the form below and click <strong>Connect</strong>.
+            The app will verify your identity and automatically find your Starter Warehouse and Lakebase
+            endpoint — no IDs to copy.
+          </li>
+        </ol>
+        <p style={{ marginTop: 10 }}>
+          <strong>No workspace yet?</strong> Go to{" "}
+          <code>databricks.com/learn/free-edition</code> → <em>Get started</em> and sign up with
+          Google, Microsoft, or email OTP. It's $0.
+        </p>
+      </TutorialGuide>
       <form className="form" onSubmit={submit}>
         <label>
           Workspace URL

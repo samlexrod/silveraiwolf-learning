@@ -88,6 +88,27 @@ code { background: #1d2230; padding: 1px 6px; border-radius: 5px; }
 .err { color: #ff7b72; }
 footer { margin-top: 32px; font-size: 12px; }
 
+/* ---- tutorial guide block (how-to / stage summary) ---- */
+.t-guide {
+  background: #0e1520; border: 1px solid var(--line); border-left: 3px solid #4a90d9;
+  border-radius: 10px; overflow: hidden;
+}
+.t-guide-head {
+  padding: 9px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #6aabf7; border-bottom: 1px solid var(--line); background: #0c1220;
+}
+.t-guide-body { padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--text); }
+.t-guide-body ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.t-guide-body li { padding-left: 4px; }
+.t-guide-body p { margin: 0 0 8px; }
+.t-guide-body p:last-child { margin: 0; }
+.t-guide-body strong { color: #e6e8ee; }
+.t-guide-body code { background: #131928; }
+.t-guide-body table { margin-top: 8px; font-size: 12px; background: #0c1220; }
+.t-guide-body th { font-size: 11px; background: #0c1220; }
+.t-guide-body td { vertical-align: top; }
+.t-guide-body .erd { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); background: #0c1220; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; line-height: 1.7; margin: 8px 0; overflow-x: auto; }
+
 /* ---- teacher callout block ---- */
 .callout {
   display: flex; gap: 12px;

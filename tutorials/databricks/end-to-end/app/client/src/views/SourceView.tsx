@@ -2,6 +2,7 @@ import { gql } from "@apollo/client";
 import { useQuery, useLazyQuery } from "@apollo/client/react";
 import { useState } from "react";
 import Callout from "../Callout";
+import TutorialGuide from "../TutorialGuide";
 
 const TABLES = gql`
   query Tables {
@@ -49,6 +50,50 @@ export default function SourceView() {
           Click any table to query live rows directly from Postgres via the server's connection pool.
         </p>
       </Callout>
+
+      <TutorialGuide title="What stages 04–06 built">
+        <p>
+          <strong>Stage 04 (Provision)</strong> created a Lakebase Autoscaling project{" "}
+          <code>silverline-oltp</code> on PostgreSQL 17 via the CLI. Authentication uses a{" "}
+          <em>short-lived OAuth token minted on demand</em> as the Postgres password — nothing static is
+          stored or committed.
+        </p>
+        <p>
+          <strong>Stage 05 (Seed)</strong> loaded Silverline Capital's full 9-table OLTP from a notebook
+          (deterministic, idempotent, seed=42). Expected counts:{" "}
+          <code>customers=60 · vendors=15 · equipment=220 · applications=140 · contracts=85 ·
+          contract_assets=180 · payment_schedule=2,904 · invoices=1,452 · payments=1,291</code>.
+        </p>
+        <p>
+          <strong>Stage 06 (Data API)</strong> created a Service Principal and demonstrated querying
+          the same tables via the Databricks SQL Statements API — the non-user, app-to-app identity pattern.
+        </p>
+        <p><strong>The data model (Silverline Capital — equipment lease &amp; loan):</strong></p>
+        <pre className="erd">{`customers ── applications ──▶ contracts ──◀ contract_assets ▶── equipment ──▶ vendors
+                                   │
+                                   ├──◀ payment_schedule
+                                   └──◀ invoices ──◀ payments`}</pre>
+        <table>
+          <thead>
+            <tr><th>Table</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            {[
+              ["customers", "The businesses Silverline finances — segment, region, credit rating, revenue"],
+              ["vendors", "Equipment suppliers — who provides the financed assets"],
+              ["equipment", "Individual assets (make, model, serial, cost, residual value)"],
+              ["applications", "Credit pipeline — submitted → approved → declined → booked"],
+              ["contracts", "Booked lease/loan deals — type, status (active/delinquent/charged_off/paid_off), APR, term"],
+              ["contract_assets", "M:N bridge — which equipment backs which contract"],
+              ["payment_schedule", "Amortization plan — principal + interest due per period"],
+              ["invoices", "Bills issued for elapsed periods — open / paid / overdue"],
+              ["payments", "Cash received against invoices"],
+            ].map(([name, role]) => (
+              <tr key={name}><td><code>{name}</code></td><td>{role}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </TutorialGuide>
 
       <div className="tablegrid">
         {loading
