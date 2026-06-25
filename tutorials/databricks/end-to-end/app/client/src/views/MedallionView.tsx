@@ -25,52 +25,61 @@ export default function MedallionView() {
         <span className="arrow">→</span>
         <div className="layer gold"><b>gold</b><span>business / serving</span></div>
       </div>
-      <TutorialGuide title="What stages 07–08 did in the tutorial">
-        <p>
-          <strong>Stage 07 (Ingest)</strong> registered the Lakebase Postgres database in Unity Catalog
-          as a <em>native catalog</em> (<code>lakebase_silverline_oltp</code>). That made its tables
-          queryable directly from the SQL warehouse as if they were Delta tables — no ETL pipeline, no
-          copy yet. Then it ran <strong>CTAS</strong> (Create Table As Select) to snapshot all 9 tables
-          into Delta as <code>silverline.bronze.*</code>:
-        </p>
-        <pre className="erd">{`CREATE OR REPLACE TABLE silverline.bronze.customers
-  AS SELECT * FROM lakebase_silverline_oltp.public.customers;
--- … repeated for all 9 tables`}</pre>
-        <p>
-          <strong>Stage 08 (Medallion)</strong> ran <strong>dbt</strong> models that transform bronze
-          into silver and gold. dbt is a SQL-first transformation tool: each model is a{" "}
-          <code>.sql</code> file that becomes a table or view, with dependencies tracked as a DAG.
-        </p>
+      <TutorialGuide title="What to do in stage 08 — three ways to build silver + gold">
+        <ol>
+          <li>
+            Run <strong><code>08.1_build_ddl</code></strong> — defines empty <code>silver_*</code> and{" "}
+            <code>gold_*_nb</code> tables (structure only, no data yet).
+          </li>
+          <li>
+            Run <strong><code>08.2_build_dbt</code></strong> — creates and runs a Databricks Job with a
+            native <code>dbt task</code>. dbt reads <code>dbt_project/</code> and outputs canonical{" "}
+            <code>gold_segment_portfolio</code> and <code>gold_contract_aging</code>.
+          </li>
+          <li>
+            Run <strong><code>08.3_build_sdp</code></strong> — creates and runs a Lakeflow/SDP declarative
+            pipeline from <code>sdp_project/</code>. Uses <code>@dlt.table</code> +{" "}
+            <code>@dlt.expect_or_drop</code> quality checks → <code>*_sdp</code> tables.
+          </li>
+          <li>
+            Run <strong><code>08.4_build_notebook</code></strong> — runs a Workflow Job that{" "}
+            <code>INSERT OVERWRITE</code>s the <code>_nb</code> tables defined in step 1 — the
+            notebook/ELT approach.
+          </li>
+          <li>
+            Run <strong><code>08.5_parity</code></strong> — compares all three gold outputs side-by-side
+            with symmetric <code>EXCEPT</code> diffs. All diffs = 0 → identical results.
+          </li>
+        </ol>
+
         <table>
-          <thead><tr><th>Layer</th><th>Tables built</th><th>What changed</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Approach</th>
+              <th>Tool</th>
+              <th>Key trade-off</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr>
-              <td><strong>Silver</strong></td>
-              <td><code>silver_customers · silver_contracts · silver_invoices · …</code></td>
-              <td>Nulls handled, types cast, FK joins applied, status pipelines conformed</td>
-            </tr>
-            <tr>
-              <td><strong>Gold</strong></td>
-              <td><code>gold_segment_portfolio · gold_contract_aging</code></td>
-              <td>Business aggregates — portfolio value by segment, aging buckets per contract</td>
-            </tr>
+            {[
+              ["Notebook (_nb)", "Workflows", "Most control, schedule it yourself"],
+              ["dbt (canonical)", "dbt + Job", "Best portability + docs/tests"],
+              ["SDP/Lakeflow (_sdp)", "Declarative", "Managed quality, least code to operate"],
+            ].map(([approach, tool, tradeoff]) => (
+              <tr key={approach}>
+                <td>{approach}</td>
+                <td>{tool}</td>
+                <td>{tradeoff}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
+
         <p style={{ marginTop: 8 }}>
           Each layer is a <strong>Delta Lake</strong> table — ACID transactions, time travel (
           <code>VERSION AS OF N</code>), and lineage tracked automatically in Unity Catalog.
         </p>
       </TutorialGuide>
-
-      <div className="soon-panel">
-        <h3>🏗️ Wiring this up next</h3>
-        <p className="muted">
-          The medallion tables (<code>silver_*</code>, <code>gold_*</code>) are Delta tables in the
-          <b> Databricks SQL warehouse</b> — a different store than Lakebase Postgres. I'm adding that as a
-          second data source on the server, then this view will show each layer's tables and counts lighting
-          up as the medallion builds.
-        </p>
-      </div>
     </div>
   );
 }

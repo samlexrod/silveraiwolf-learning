@@ -2,10 +2,17 @@ import { useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import SetupView from "./views/SetupView";
-import SourceView from "./views/SourceView";
-import LiveView from "./views/LiveView";
+import LandingZoneView from "./views/LandingZoneView";
+import ProjectView from "./views/ProjectView";
+import ProvisionView from "./views/ProvisionView";
+import SeedView from "./views/SeedView";
+import DataApiView from "./views/DataApiView";
+import IngestView from "./views/IngestView";
 import MedallionView from "./views/MedallionView";
-import AnalyticsView from "./views/AnalyticsView";
+import LiveView from "./views/LiveView";
+import BusinessLayerView from "./views/BusinessLayerView";
+import SemanticView from "./views/SemanticView";
+import AiBiView from "./views/AiBiView";
 import ChatPanel from "./ChatPanel";
 import "./App.css";
 
@@ -21,21 +28,48 @@ const CONN = gql`
   }
 `;
 
-type StepId = "connect" | "source" | "refresh" | "medallion" | "analytics";
-const STEPS: { id: StepId; phase: string; label: string; icon: string; soon?: boolean }[] = [
-  { id: "connect", phase: "Setup", label: "Connect", icon: "🔌" },
-  { id: "source", phase: "Lakebase", label: "Source · OLTP", icon: "🗃️" },
-  { id: "refresh", phase: "Lakehouse", label: "Refresh · Live", icon: "⚡" },
-  { id: "medallion", phase: "Lakehouse", label: "Medallion", icon: "🏗️", soon: true },
-  { id: "analytics", phase: "Analytics", label: "Analytics", icon: "📈", soon: true },
+type StepId =
+  | "connect"
+  | "landing-zone"
+  | "project"
+  | "provision"
+  | "seed"
+  | "data-api"
+  | "ingest"
+  | "medallion"
+  | "refresh"
+  | "business-layer"
+  | "semantic"
+  | "ai-bi";
+
+const STEPS: { id: StepId; phase: string; label: string; icon: string }[] = [
+  { id: "connect",        phase: "Setup",     label: "Connect",           icon: "🔌" },
+  { id: "landing-zone",   phase: "Setup",     label: "Landing Zone",      icon: "🗂️" },
+  { id: "project",        phase: "Setup",     label: "Project · dbt",     icon: "🛠️" },
+  { id: "provision",      phase: "Lakebase",  label: "Provision",         icon: "🐘" },
+  { id: "seed",           phase: "Lakebase",  label: "Seed",              icon: "🌱" },
+  { id: "data-api",       phase: "Lakebase",  label: "Data API",          icon: "🌐" },
+  { id: "ingest",         phase: "Lakehouse", label: "Ingest",            icon: "📥" },
+  { id: "medallion",      phase: "Lakehouse", label: "Medallion",         icon: "🏗️" },
+  { id: "refresh",        phase: "Lakehouse", label: "Refresh · Live",    icon: "⚡" },
+  { id: "business-layer", phase: "Analytics", label: "Business Layer",    icon: "📋" },
+  { id: "semantic",       phase: "Analytics", label: "Semantic · Metrics", icon: "📐" },
+  { id: "ai-bi",          phase: "Analytics", label: "AI/BI · Genie",    icon: "🤖" },
 ];
 
 const TITLES: Record<StepId, string> = {
-  connect: "Connect — point the app at your workspace",
-  source: "Source — the operational data (Lakebase OLTP)",
-  refresh: "Refresh — change the source, watch it stream",
-  medallion: "Medallion — bronze → silver → gold",
-  analytics: "Analytics — governed metrics",
+  "connect":        "Connect — point the app at your workspace",
+  "landing-zone":   "Landing Zone — Unity Catalog, schemas, and managed volume",
+  "project":        "Project · dbt — local tooling (mise, uv, dbt via OAuth)",
+  "provision":      "Provision — create the Lakebase PG17 autoscaling project",
+  "seed":           "Seed — load Silverline Capital's 9-table OLTP",
+  "data-api":       "Data API — expose Lakebase as a REST endpoint",
+  "ingest":         "Ingest — land Lakebase data into bronze Delta",
+  "medallion":      "Medallion — bronze → silver → gold (three ways)",
+  "refresh":        "Refresh · Live — change the source, watch it stream",
+  "business-layer": "Business Layer — document gold tables for Genie",
+  "semantic":       "Semantic · Metrics — governed MEASURE() Metric View",
+  "ai-bi":          "AI/BI · Genie — dashboard + natural-language queries",
 };
 
 const KEY = "silverline.progress";
@@ -74,7 +108,7 @@ export default function App() {
 
   const onConnected = async () => {
     await refetch();
-    setView("source");
+    setView("landing-zone");
   };
 
   const stepState = (id: StepId): "done" | "current" | "locked" =>
@@ -100,7 +134,6 @@ export default function App() {
               >
                 <span className="ic">{st === "done" ? "✓" : st === "locked" ? "🔒" : s.icon}</span>
                 <span>{s.label}</span>
-                {s.soon && <span className="soon">soon</span>}
               </button>
             </div>
           );
@@ -109,11 +142,18 @@ export default function App() {
 
       <main className="content">
         <h2 className="vtitle">{TITLES[view]}</h2>
-        {view === "connect" && <SetupView conn={conn} onConnected={onConnected} />}
-        {view === "source" && <SourceView />}
-        {view === "refresh" && <LiveView />}
-        {view === "medallion" && <MedallionView />}
-        {view === "analytics" && <AnalyticsView />}
+        {view === "connect"        && <SetupView conn={conn} onConnected={onConnected} />}
+        {view === "landing-zone"   && <LandingZoneView />}
+        {view === "project"        && <ProjectView />}
+        {view === "provision"      && <ProvisionView />}
+        {view === "seed"           && <SeedView />}
+        {view === "data-api"       && <DataApiView />}
+        {view === "ingest"         && <IngestView />}
+        {view === "medallion"      && <MedallionView />}
+        {view === "refresh"        && <LiveView />}
+        {view === "business-layer" && <BusinessLayerView />}
+        {view === "semantic"       && <SemanticView />}
+        {view === "ai-bi"          && <AiBiView />}
 
         {view !== "connect" && idxOf(view) === currentIdx && idxOf(view) < STEPS.length - 1 && (
           <div className="advance">

@@ -73,11 +73,18 @@ type StepCtx = {
   status?: "done" | "current" | "locked";
 };
 const VIEW_STAGES: Record<string, string> = {
-  connect: "the connect stage (01)",
-  source: "the Lakebase stages — provision · seed · data-api (04–06)",
-  refresh: "the refresh stage + live change-data streaming (09)",
-  medallion: "the lakehouse stages — ingest · medallion (07–08)",
-  analytics: "the analytics stages — business-layer · semantic · ai-bi (10–12)",
+  "connect":        "stage 01 — Connect (authenticate the Databricks CLI to Free Edition)",
+  "landing-zone":   "stage 02 — Landing Zone (create the silverline Unity Catalog, bronze/silver/gold schemas, managed volume)",
+  "project":        "stage 03 — Project (local tooling: mise task runner, uv, dbt connected to the Starter Warehouse)",
+  "provision":      "stage 04 — Provision (create the Lakebase PG17 autoscaling project silverline-oltp)",
+  "seed":           "stage 05 — Seed (load Silverline Capital's 9-table OLTP: customers, contracts, invoices, etc.)",
+  "data-api":       "stage 06 — Data API (enable Lakebase REST, create a service principal, query via PostgREST)",
+  "ingest":         "stage 07 — Ingest (register Lakebase as a native UC catalog, then land bronze via CTAS and/or CDC)",
+  "medallion":      "stage 08 — Medallion (build silver + gold three ways: notebook, dbt Job, and SDP pipeline)",
+  "refresh":        "stage 09 — Refresh (apply a change-set to Lakebase and prove it propagates bronze→silver→gold)",
+  "business-layer": "stage 10 — Business Layer (document gold tables with COMMENTs for Genie, create customer_360 view)",
+  "semantic":       "stage 11 — Semantic (create the portfolio_metrics Metric View with MEASURE() functions)",
+  "ai-bi":          "stage 12 — AI/BI + Genie (dashboard + Genie space over the governed metric view)",
 };
 const clip = (s: unknown, n = 120) => (typeof s === "string" ? s.slice(0, n) : "");
 
