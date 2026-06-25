@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useSubscription, useMutation } from "@apollo/client/react";
 import { useEffect, useState } from "react";
+import Callout from "../Callout";
 
 const ROW_CHANGED = gql`
   subscription RowChanged {
@@ -41,10 +42,20 @@ export default function LiveView() {
         </button>
       </div>
       {error && <p className="err">Subscription error: {error.message}</p>}
-      <p className="muted">
-        Click <b>Simulate a change</b> — an INSERT → UPDATE → DELETE runs in Lakebase and the events
-        stream into the feed below, no leaving the page.
-      </p>
+      <Callout icon="⚡">
+        <p>
+          <strong>Postgres LISTEN/NOTIFY</strong> is a built-in pub-sub channel. Three database triggers on{" "}
+          <code>customers</code>, <code>contracts</code>, and <code>invoices</code> call{" "}
+          <code>pg_notify('silverline_changes', …)</code> on every INSERT, UPDATE, or DELETE. The server
+          holds a dedicated connection that called <code>LISTEN silverline_changes</code> at startup — so
+          changes arrive in microseconds with no polling.
+        </p>
+        <p>
+          Those events are forwarded to the browser as a <strong>GraphQL subscription over WebSocket</strong>,
+          which is why they appear here instantly. Hit <strong>Simulate a change</strong> to watch an INSERT →
+          UPDATE → DELETE sequence land in real time.
+        </p>
+      </Callout>
 
       {feed.length === 0 ? (
         <p className="muted">Waiting for changes…</p>

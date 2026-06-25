@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useState } from "react";
+import Callout from "../Callout";
 
 const CONFIGURE = gql`
   mutation Configure($workspaceUrl: String!, $token: String!) {
@@ -54,11 +55,15 @@ export default function SetupView({ conn, onConnected }: { conn?: Conn; onConnec
 
   return (
     <div className="stack">
-      <p className="muted">
-        Enter your Databricks workspace URL and a personal access token. The app discovers your warehouse and
-        Lakebase endpoint automatically — no terminal needed. The token is held in the server's memory only,
-        never written to disk.
-      </p>
+      <Callout icon="🔑">
+        <p>
+          <strong>Personal Access Tokens (PATs)</strong> are how external tools authenticate to Databricks —
+          the same mechanism the CLI, dbt, and any REST caller use. Once you paste yours, this app calls
+          the Databricks REST API to confirm your identity, then <em>auto-discovers</em> your serverless
+          warehouse and Lakebase endpoint — no copy-pasting IDs.
+        </p>
+        <p>Your token is held in the server process only. It is never written to disk or sent anywhere else.</p>
+      </Callout>
       <form className="form" onSubmit={submit}>
         <label>
           Workspace URL

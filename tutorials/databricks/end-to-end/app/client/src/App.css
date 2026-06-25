@@ -88,6 +88,19 @@ code { background: #1d2230; padding: 1px 6px; border-radius: 5px; }
 .err { color: #ff7b72; }
 footer { margin-top: 32px; font-size: 12px; }
 
+/* ---- teacher callout block ---- */
+.callout {
+  display: flex; gap: 12px;
+  background: #131720; border: 1px solid var(--line); border-left: 3px solid var(--silver);
+  border-radius: 10px; padding: 14px 16px;
+}
+.callout-icon { font-size: 18px; line-height: 1.5; flex: none; margin-top: 1px; }
+.callout-body { font-size: 13px; line-height: 1.65; color: var(--text); }
+.callout-body p { margin: 0 0 6px; }
+.callout-body p:last-child { margin: 0; }
+.callout-body strong { color: #e6e8ee; }
+.callout-body code { background: #1a1e2b; }
+
 /* ---- phase-navigation shell ---- */
 .shell { display: grid; grid-template-columns: 215px 1fr 320px; min-height: 100vh; }
 

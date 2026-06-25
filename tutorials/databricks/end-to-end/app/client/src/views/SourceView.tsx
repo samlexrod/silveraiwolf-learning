@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { useQuery, useLazyQuery } from "@apollo/client/react";
 import { useState } from "react";
+import Callout from "../Callout";
 
 const TABLES = gql`
   query Tables {
@@ -36,9 +37,18 @@ export default function SourceView() {
 
   return (
     <div className="stack">
-      <p className="muted">
-        Silverline's full operational model — 9 related tables in Lakebase. Click any table to read live rows.
-      </p>
+      <Callout icon="🗃️">
+        <p>
+          <strong>Lakebase is Databricks' serverless Postgres 17</strong> — your OLTP (Online Transaction
+          Processing) source. OLTP means it's built for fast, row-level reads and writes: the business
+          records customers, creates contracts, logs payments here in real time.
+        </p>
+        <p>
+          These 9 tables are Silverline Capital's operational data model. They're the raw source of truth
+          that will be <em>ingested into the Lakehouse</em> and transformed bronze → silver → gold.
+          Click any table to query live rows directly from Postgres via the server's connection pool.
+        </p>
+      </Callout>
 
       <div className="tablegrid">
         {loading
