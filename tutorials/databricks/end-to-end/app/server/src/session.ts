@@ -33,6 +33,10 @@ export function requirePool(): pg.Pool {
   return pool;
 }
 
+export function isListening(): boolean {
+  return listenClient !== null;
+}
+
 export function warehouse() {
   if (!conn) throw new Error("Not connected.");
   return { host: conn.host, token: conn.token, id: conn.warehouseId };

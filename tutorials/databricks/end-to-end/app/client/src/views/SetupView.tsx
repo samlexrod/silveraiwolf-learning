@@ -16,20 +16,42 @@ const CONFIGURE = gql`
   }
 `;
 
+const URL_KEY = "silverline.workspaceUrl";
+const PAT_KEY = "silverline.pat";
+
 type Conn = { connected: boolean; user?: string; workspace?: string; warehouseId?: string; lakebaseHost?: string };
 
-export default function SetupView({ conn, onConnected }: { conn?: Conn; onConnected: () => void }) {
-  const [url, setUrl] = useState(conn?.workspace ?? "");
-  const [token, setToken] = useState("");
+export default function SetupView({
+  conn,
+  onRefresh,
+  onContinue,
+}: {
+  conn?: Conn;
+  onRefresh: () => void;
+  onContinue: () => void;
+}) {
+  const [url, setUrl] = useState(() => localStorage.getItem(URL_KEY) ?? conn?.workspace ?? "");
+  const [token, setToken] = useState(() => localStorage.getItem(PAT_KEY) ?? "");
+  const [autoErr, setAutoErr] = useState("");
   const [configure, { loading, error }] = useMutation(CONFIGURE);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAutoErr("");
     const res = await configure({ variables: { workspaceUrl: url, token } });
     if ((res.data as { configure: Conn } | null | undefined)?.configure?.connected) {
+      localStorage.setItem(URL_KEY, url);
+      localStorage.setItem(PAT_KEY, token);
       setToken("");
-      onConnected();
+      onRefresh();
     }
+  };
+
+  const disconnect = () => {
+    localStorage.removeItem(URL_KEY);
+    localStorage.removeItem(PAT_KEY);
+    setUrl("");
+    setToken("");
   };
 
   if (conn?.connected) {
@@ -49,13 +71,23 @@ export default function SetupView({ conn, onConnected }: { conn?: Conn; onConnec
             <tr><th>Lakebase host</th><td>{conn.lakebaseHost}</td></tr>
           </tbody>
         </table>
-        <p className="muted">All set — use the steps on the left. They unlock in order.</p>
+        <p className="muted">Workspace verified — click Continue to start the tutorial.</p>
+        <button className="form-continue" onClick={onContinue}>
+          Continue → Landing Zone
+        </button>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Your credentials are saved in this browser and will reconnect automatically on restart.{" "}
+          <button className="link" style={{ fontSize: 12 }} onClick={disconnect}>
+            Clear saved credentials
+          </button>
+        </p>
       </div>
     );
   }
 
   return (
     <div className="stack">
+      {autoErr && <p className="err">{autoErr}</p>}
       <Callout icon="🔑">
         <p>
           <strong>Personal Access Tokens (PATs)</strong> are how external tools authenticate to Databricks —
@@ -63,7 +95,11 @@ export default function SetupView({ conn, onConnected }: { conn?: Conn; onConnec
           the Databricks REST API to confirm your identity, then <em>auto-discovers</em> your serverless
           warehouse and Lakebase endpoint — no copy-pasting IDs.
         </p>
-        <p>Your token is held in the server process only. It is never written to disk or sent anywhere else.</p>
+        <p>
+          Your workspace URL and token are saved in <strong>this browser's localStorage</strong> so the app
+          reconnects automatically when the server restarts — you won't need to re-enter them. They are
+          never sent anywhere other than your own Databricks workspace.
+        </p>
       </Callout>
       <TutorialGuide title="How to get your credentials">
         <ol>

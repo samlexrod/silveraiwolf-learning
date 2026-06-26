@@ -33,6 +33,12 @@ export const mintPgCredential = async (host: string, token: string, ep: string):
     })
   ).token;
 
+export const listDashboards = async (host: string, token: string): Promise<any[]> =>
+  (await api(host, token, "/api/2.0/lakeview/dashboards")).dashboards ?? [];
+
+export const listGenieSpaces = async (host: string, token: string): Promise<any[]> =>
+  (await api(host, token, "/api/2.0/genie/spaces")).spaces ?? [];
+
 // Run one SQL statement on a serverless warehouse (Delta — bronze/silver/gold, metric views).
 export const runSql = async (host: string, token: string, warehouseId: string, statement: string) =>
   api(host, token, "/api/2.0/sql/statements", {

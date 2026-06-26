@@ -1,6 +1,7 @@
 import { GraphQLJSON } from "graphql-scalars";
 import { pubsub, ROW_CHANGED } from "./pubsub.js";
 import { requirePool, configure, status } from "./session.js";
+import { verifyStage } from "./verify.js";
 
 // The Silverline OLTP model — also the allowlist that guards `tableRows` against injection.
 const TABLES = [
@@ -62,6 +63,17 @@ export const typeDefs = /* GraphQL */ `
     row: JSON
   }
 
+  type StageCheck {
+    name: String!
+    passed: Boolean!
+    detail: String!
+  }
+
+  type VerifyResult {
+    passed: Boolean!
+    checks: [StageCheck!]!
+  }
+
   type Query {
     connectionStatus: ConnectionStatus!
     counts: Counts!
@@ -69,6 +81,7 @@ export const typeDefs = /* GraphQL */ `
     contracts(limit: Int = 25): [Contract!]!
     tables: [TableInfo!]!
     tableRows(name: String!, limit: Int = 12): [JSON!]!
+    verifyStage(id: String!): VerifyResult!
   }
 
   type Subscription {
@@ -122,6 +135,7 @@ export const resolvers = {
       if (!TABLES.includes(name as (typeof TABLES)[number])) throw new Error(`unknown table: ${name}`);
       return (await requirePool().query(`SELECT * FROM ${name} ORDER BY 1 LIMIT $1`, [limit])).rows;
     },
+    verifyStage: (_: unknown, { id }: { id: string }) => verifyStage(id),
   },
   Subscription: {
     rowChanged: {

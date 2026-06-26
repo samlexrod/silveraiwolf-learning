@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import SetupView from "./views/SetupView";
 import LandingZoneView from "./views/LandingZoneView";
 import ProjectView from "./views/ProjectView";
@@ -14,6 +14,8 @@ import BusinessLayerView from "./views/BusinessLayerView";
 import SemanticView from "./views/SemanticView";
 import AiBiView from "./views/AiBiView";
 import ChatPanel from "./ChatPanel";
+import SelectionTooltip from "./SelectionTooltip";
+import VerifyPanel from "./VerifyPanel";
 import "./App.css";
 
 const CONN = gql`
@@ -24,6 +26,14 @@ const CONN = gql`
       workspace
       warehouseId
       lakebaseHost
+    }
+  }
+`;
+
+const CONFIGURE = gql`
+  mutation Configure($workspaceUrl: String!, $token: String!) {
+    configure(workspaceUrl: $workspaceUrl, token: $token) {
+      connected
     }
   }
 `;
@@ -72,6 +82,11 @@ const TITLES: Record<StepId, string> = {
   "ai-bi":          "AI/BI · Genie — dashboard + natural-language queries",
 };
 
+// Stages that have real server-side checks — show VerifyPanel instead of the plain "Mark done" button.
+const HAS_VERIFY = new Set<StepId>([
+  "landing-zone", "provision", "seed", "ingest", "medallion", "refresh", "business-layer", "semantic", "ai-bi",
+]);
+
 const KEY = "silverline.progress";
 const loadDone = (): string[] => {
   try {
@@ -88,8 +103,35 @@ export default function App() {
   const conn = data?.connectionStatus;
   const connected = !!conn?.connected;
 
+  const [configure] = useMutation(CONFIGURE);
+
+  // Re-establish the server-side pool whenever it's lost (e.g. after a server restart),
+  // regardless of which step is currently shown.
+  useEffect(() => {
+    if (connected) return;
+    const savedUrl = localStorage.getItem("silverline.workspaceUrl");
+    const savedPat = localStorage.getItem("silverline.pat");
+    if (savedUrl && savedPat) {
+      configure({ variables: { workspaceUrl: savedUrl, token: savedPat } })
+        .then(() => refetch())
+        .catch(() => {}); // SetupView handles error display if the user navigates there
+    }
+  }, [connected]);
+
   const [doneAfter, setDoneAfter] = useState<string[]>(loadDone);
   const [view, setView] = useState<StepId>("connect");
+  const [pendingContext, setPendingContext] = useState<string | undefined>();
+  const [theme, setTheme] = useState<"dark" | "light">(
+    () => (localStorage.getItem("silverline.theme") as "dark" | "light") ?? "dark",
+  );
+  const [chatWidth, setChatWidth] = useState<number>(
+    () => parseInt(localStorage.getItem("silverline.chatWidth") ?? "320"),
+  );
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("silverline.theme", theme);
+  }, [theme]);
 
   const idxOf = (id: StepId) => STEPS.findIndex((s) => s.id === id);
   const isDone = (id: StepId) => (id === "connect" ? connected : doneAfter.includes(id));
@@ -106,10 +148,8 @@ export default function App() {
     setView(STEPS[Math.min(idxOf(id) + 1, STEPS.length - 1)].id);
   };
 
-  const onConnected = async () => {
-    await refetch();
-    setView("landing-zone");
-  };
+  const onRefresh = async () => { await refetch(); };
+  const onContinue = () => setView("landing-zone");
 
   const stepState = (id: StepId): "done" | "current" | "locked" =>
     isDone(id) ? "done" : idxOf(id) === currentIdx ? "current" : "locked";
@@ -117,7 +157,7 @@ export default function App() {
   let lastPhase = "";
 
   return (
-    <div className="shell">
+    <div className="shell" style={{ "--chat-w": `${chatWidth}px` } as React.CSSProperties}>
       <aside className="side">
         <div className="brand">🐺 <span>Silverline<small>Explorer · guided</small></span></div>
         {STEPS.map((s) => {
@@ -141,8 +181,18 @@ export default function App() {
       </aside>
 
       <main className="content">
-        <h2 className="vtitle">{TITLES[view]}</h2>
-        {view === "connect"        && <SetupView conn={conn} onConnected={onConnected} />}
+        <SelectionTooltip within=".content, .chat-msgs" onSend={setPendingContext} />
+        <div className="content-hdr">
+          <h2 className="vtitle">{TITLES[view]}</h2>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
+        </div>
+        {view === "connect"        && <SetupView conn={conn} onRefresh={onRefresh} onContinue={onContinue} />}
         {view === "landing-zone"   && <LandingZoneView />}
         {view === "project"        && <ProjectView />}
         {view === "provision"      && <ProvisionView />}
@@ -157,9 +207,18 @@ export default function App() {
 
         {view !== "connect" && idxOf(view) === currentIdx && idxOf(view) < STEPS.length - 1 && (
           <div className="advance">
-            <button onClick={() => completeAndAdvance(view)}>
-              Mark done & continue → {STEPS[idxOf(view) + 1].label}
-            </button>
+            {HAS_VERIFY.has(view) ? (
+              <VerifyPanel
+                key={view}
+                stageId={view}
+                nextLabel={STEPS[idxOf(view) + 1].label}
+                onVerified={() => completeAndAdvance(view)}
+              />
+            ) : (
+              <button onClick={() => completeAndAdvance(view)}>
+                Mark done & continue → {STEPS[idxOf(view) + 1].label}
+              </button>
+            )}
           </div>
         )}
       </main>
@@ -173,6 +232,12 @@ export default function App() {
           index: idxOf(view) + 1,
           total: STEPS.length,
           status: stepState(view),
+        }}
+        pendingContext={pendingContext}
+        onContextConsumed={() => setPendingContext(undefined)}
+        onResize={(w) => {
+          setChatWidth(w);
+          localStorage.setItem("silverline.chatWidth", String(w));
         }}
       />
     </div>

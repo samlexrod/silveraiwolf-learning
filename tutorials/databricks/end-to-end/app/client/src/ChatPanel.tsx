@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const SERVER = import.meta.env.VITE_SERVER ?? "localhost:4000";
 const KEY = "silverline.anthropicKey";
@@ -14,6 +16,15 @@ const MODELS = [
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+// Detect messages that were built from a text-selection context chip.
+function parseContextMsg(text: string): { quote: string; question?: string } | null {
+  const m = text.match(
+    /^(?:Regarding this from the tutorial:|Can you explain this from the tutorial\?)\n> "([\s\S]+?)"(?:\n\n([\s\S]*))?$/,
+  );
+  if (!m) return null;
+  return { quote: m[1], question: m[2]?.trim() || undefined };
+}
+
 // Where the learner is right now — sent with each request so Claude has phase/step context.
 export type StepCtx = {
   id: string;
@@ -25,7 +36,17 @@ export type StepCtx = {
   status: "done" | "current" | "locked";
 };
 
-export default function ChatPanel({ step }: { step?: StepCtx }) {
+export default function ChatPanel({
+  step,
+  pendingContext,
+  onContextConsumed,
+  onResize,
+}: {
+  step?: StepCtx;
+  pendingContext?: string;
+  onContextConsumed?: () => void;
+  onResize?: (w: number) => void;
+}) {
   const [authMode, setAuthMode] = useState<string>(() => localStorage.getItem(AMODE) ?? "");
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(KEY) ?? "");
   const [keyInput, setKeyInput] = useState("");
@@ -38,6 +59,29 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
   const [busy, setBusy] = useState(false);
   const [model, setModel] = useState<string>(() => localStorage.getItem(MKEY) ?? MODELS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const chatRef = useRef<HTMLElement>(null);
+
+  const startResize = useCallback((e: React.MouseEvent) => {
+    if (!onResize) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = chatRef.current?.offsetWidth ?? 320;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.max(240, Math.min(700, startW + (startX - ev.clientX)));
+      onResize(newW);
+    };
+    const onUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [onResize]);
 
   const enabled = authMode === "ambient" || (authMode === "key" && !!apiKey);
 
@@ -73,6 +117,13 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages, busy]);
 
+  // When highlighted text arrives, focus the chat input so the user can type their question
+  useEffect(() => {
+    if (pendingContext && enabled) {
+      textareaRef.current?.focus();
+    }
+  }, [pendingContext, enabled]);
+
   const useAmbient = () => {
     localStorage.setItem(AMODE, "ambient");
     setAuthMode("ambient");
@@ -92,10 +143,17 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
     setMessages([]);
   };
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || busy) return;
+  const send = useCallback(async () => {
+    const rawText = input.trim();
+    // allow sending with just a context chip (no extra text)
+    if ((!rawText && !pendingContext) || busy) return;
+    const text = pendingContext
+      ? rawText
+        ? `Regarding this from the tutorial:\n> "${pendingContext}"\n\n${rawText}`
+        : `Can you explain this from the tutorial?\n> "${pendingContext}"`
+      : rawText;
     const next: Msg[] = [...messages, { role: "user", content: text }];
+    onContextConsumed?.();
     setMessages([...next, { role: "assistant", content: "" }]);
     setInput("");
     setBusy(true);
@@ -142,11 +200,12 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
     } finally {
       setBusy(false);
     }
-  };
+  }, [input, pendingContext, busy, messages, authMode, apiKey, model, step, onContextConsumed]);
 
   if (!enabled) {
     return (
-      <aside className="chat">
+      <aside className="chat" ref={chatRef}>
+        <div className="chat-resize-handle" onMouseDown={startResize} />
         <div className="chat-head">💬 Ask Claude</div>
         <div className="chat-key">
           {ambient === null && <p className="muted">Checking for credentials…</p>}
@@ -187,7 +246,8 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
   }
 
   return (
-    <aside className="chat">
+    <aside className="chat" ref={chatRef}>
+      <div className="chat-resize-handle" onMouseDown={startResize} />
       <div className="chat-head">
         💬 Ask Claude
         <button className="link" onClick={clearAuth}>{authMode === "ambient" ? "switch" : "reset key"}</button>
@@ -209,12 +269,51 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
         {messages.length === 0 && (
           <p className="muted chat-empty">Ask anything about the tutorial, Databricks, Lakebase, or SQL.</p>
         )}
-        {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.role}`}>
-            {m.content || (busy && i === messages.length - 1 ? "…" : "")}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          if (m.role === "user") {
+            const ctx = parseContextMsg(m.content);
+            return (
+              <div key={i} className="bubble user">
+                {ctx ? (
+                  <>
+                    <div className="bubble-quote">
+                      <span className="bubble-quote-label">From the tutorial</span>
+                      <span className="bubble-quote-text">{ctx.quote}</span>
+                    </div>
+                    {ctx.question
+                      ? <div className="bubble-question">{ctx.question}</div>
+                      : <div className="bubble-question muted">Can you explain this?</div>
+                    }
+                  </>
+                ) : m.content}
+              </div>
+            );
+          }
+          return (
+            <div key={i} className="bubble assistant">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {m.content || (busy && i === messages.length - 1 ? "…" : "")}
+              </ReactMarkdown>
+            </div>
+          );
+        })}
       </div>
+      {pendingContext && (
+        <div className="ctx-chip">
+          <span>
+            Re: &ldquo;
+            {pendingContext.length > 80 ? pendingContext.slice(0, 80) + "…" : pendingContext}
+            &rdquo;
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss context"
+            onClick={onContextConsumed}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <form
         className="chat-input"
         onSubmit={(e) => {
@@ -223,9 +322,10 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
         }}
       >
         <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about a stage…"
+          placeholder={pendingContext ? "Type your question about the highlighted text…" : "Ask about a stage…"}
           rows={2}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -234,7 +334,7 @@ export default function ChatPanel({ step }: { step?: StepCtx }) {
             }
           }}
         />
-        <button type="submit" disabled={busy || !input.trim()}>
+        <button type="submit" disabled={busy || (!input.trim() && !pendingContext)}>
           {busy ? "…" : "Send"}
         </button>
       </form>

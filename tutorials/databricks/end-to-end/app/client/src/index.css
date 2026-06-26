@@ -1,11 +1,11 @@
 :root {
-  color-scheme: dark;
+  color-scheme: dark light;
 }
 
 html,
 body {
   margin: 0;
-  background: #0f1117;
+  background: var(--bg);
 }
 
 #root {
