@@ -2,6 +2,7 @@ import { GraphQLJSON } from "graphql-scalars";
 import { pubsub, ROW_CHANGED } from "./pubsub.js";
 import { requirePool, configure, status } from "./session.js";
 import { verifyStage } from "./verify.js";
+import { loadTutorial, defaultTutorial } from "./tutorial-loader.js";
 
 // The Silverline OLTP model — also the allowlist that guards `tableRows` against injection.
 const TABLES = [
@@ -74,6 +75,41 @@ export const typeDefs = /* GraphQL */ `
     checks: [StageCheck!]!
   }
 
+  type CalloutConfig {
+    icon: String!
+    body: String!
+  }
+
+  type SectionConfig {
+    heading: String!
+    body: String!
+  }
+
+  type StageContent {
+    callout: CalloutConfig
+    sections: [SectionConfig!]!
+  }
+
+  type StageConfig {
+    id: String!
+    phase: String!
+    label: String!
+    icon: String!
+    title: String!
+    "special = 'connect' means render the built-in connect form, not markdown content"
+    special: String
+    hasVerify: Boolean!
+    widgets: [String!]!
+    content: StageContent
+  }
+
+  type TutorialConfigResult {
+    id: String!
+    name: String!
+    description: String
+    stages: [StageConfig!]!
+  }
+
   type Query {
     connectionStatus: ConnectionStatus!
     counts: Counts!
@@ -82,6 +118,8 @@ export const typeDefs = /* GraphQL */ `
     tables: [TableInfo!]!
     tableRows(name: String!, limit: Int = 12): [JSON!]!
     verifyStage(id: String!): VerifyResult!
+    "Load the tutorial config — stages metadata + markdown content (verify rules stay server-side)"
+    tutorialConfig(id: String): TutorialConfigResult!
   }
 
   type Subscription {
@@ -136,6 +174,30 @@ export const resolvers = {
       return (await requirePool().query(`SELECT * FROM ${name} ORDER BY 1 LIMIT $1`, [limit])).rows;
     },
     verifyStage: (_: unknown, { id }: { id: string }) => verifyStage(id),
+    tutorialConfig: (_: unknown, { id }: { id?: string }) => {
+      const config = id ? loadTutorial(id) : defaultTutorial();
+      return {
+        id: config.id,
+        name: config.name,
+        description: config.description ?? null,
+        stages: config.stages.map((s) => ({
+          id: s.id,
+          phase: s.phase,
+          label: s.label,
+          icon: s.icon,
+          title: s.title,
+          special: s.special ?? null,
+          hasVerify: Boolean(s.verify),
+          widgets: s.widgets ?? [],
+          content: s.content
+            ? {
+                callout: s.content.callout ?? null,
+                sections: s.content.sections,
+              }
+            : null,
+        })),
+      };
+    },
   },
   Subscription: {
     rowChanged: {
