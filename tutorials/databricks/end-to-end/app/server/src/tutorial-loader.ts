@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { TutorialConfig } from "./tutorial-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, "../../data/tutorials");
+const DATA_DIR = join(__dirname, "../data/tutorials");
 
 const cache = new Map<string, TutorialConfig>();
 

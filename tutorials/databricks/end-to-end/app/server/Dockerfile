@@ -7,6 +7,7 @@ RUN npm install --no-audit --no-fund
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY data ./data
 
 ENV PORT=4000
 EXPOSE 4000
