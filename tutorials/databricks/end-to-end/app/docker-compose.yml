@@ -1,10 +1,11 @@
 # Silverline Lakehouse Explorer — runs anywhere with Docker.
 #
-#   server  → Apollo GraphQL + Express (PAT-based auth via the browser UI)
-#   client  → static React/Vite bundle served by nginx
+#   server  → pre-built GraphQL/Apollo bundle (no source required)
+#   client  → pre-built React bundle served by nginx
 #
-# No env vars or secrets needed before starting — all Databricks credentials
-# (workspace URL + PAT) are entered through the browser UI after launch.
+# Optional: add ANTHROPIC_API_KEY to enable the Claude chat assistant.
+# Copy .env.example to .env and fill in the key, or pass it inline:
+#   ANTHROPIC_API_KEY=sk-ant-... docker compose up
 #
 # Usage:
 #   docker compose up --build
@@ -15,13 +16,12 @@ services:
     build: ./server
     ports:
       - "4000:4000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     restart: unless-stopped
 
   client:
-    build:
-      context: ./client
-      args:
-        VITE_SERVER: localhost:4000
+    build: ./client
     ports:
       - "8080:80"
     depends_on:

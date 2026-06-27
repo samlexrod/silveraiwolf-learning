@@ -1,0 +1,440 @@
+{
+  "id": "databricks-end-to-end",
+  "name": "Databricks End-to-End",
+  "description": "A full tour of Databricks Free Edition across 12 ordered stages — from Unity Catalog and Lakebase to the medallion, semantic layer, and AI/BI Genie. $0, serverless, no cloud account required.",
+  "platform": "databricks",
+  "tags": ["databricks", "lakebase", "unity-catalog", "medallion", "dbt", "ai-bi", "genie", "free-edition"],
+  "stages": [
+    {
+      "id": "connect",
+      "phase": "Setup",
+      "label": "Connect",
+      "icon": "🔌",
+      "title": "Connect — point the app at your workspace",
+      "special": "connect"
+    },
+
+    {
+      "id": "landing-zone",
+      "phase": "Setup",
+      "label": "Landing Zone",
+      "icon": "🗂️",
+      "title": "Landing Zone — Unity Catalog, schemas, and managed volume",
+      "content": {
+        "callout": {
+          "icon": "🗂️",
+          "body": "**Unity Catalog** is Databricks' governance layer — a three-level namespace (catalog → schema → table/volume) with access control, lineage, and data discovery built in. You own one catalog: `silverline`, with three schemas that mirror the medallion architecture (`bronze` / `silver` / `gold`) and a **managed volume** for files.\n\n**Managed** means Databricks owns the storage lifecycle — drop the volume and the files are deleted. **External** means your own cloud bucket — drop the volume registration and the files are kept. For Free Edition we use managed volumes (no cloud account needed)."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 02 — create the Unity Catalog landing zone",
+            "body": "1. In the workspace, open the **SQL editor** (left sidebar → SQL Editor).\n\n2. Run this block to create the catalog and medallion schemas (idempotent — safe to re-run):\n\n   ```sql\n   CREATE CATALOG IF NOT EXISTS silverline\n     COMMENT 'Shared landing zone for all tutorial phases.';\n   CREATE SCHEMA IF NOT EXISTS silverline.bronze COMMENT 'Raw / ingested';\n   CREATE SCHEMA IF NOT EXISTS silverline.silver COMMENT 'Cleaned / current-state';\n   CREATE SCHEMA IF NOT EXISTS silverline.gold   COMMENT 'Business / serving';\n   ```\n\n3. Create the managed volume for seed files and contract PDFs:\n\n   ```sql\n   CREATE VOLUME IF NOT EXISTS silverline.bronze.files\n     COMMENT 'Managed volume — seed files + contract PDFs for the RAG track.';\n   ```\n\n4. Verify your work:\n\n   ```sql\n   SHOW SCHEMAS IN silverline;       -- expect bronze, silver, gold\n   SHOW VOLUMES IN silverline.bronze; -- expect files\n   ```\n\n5. Browse to **Catalog Explorer** in the UI (left sidebar → Catalog) to see `silverline` and its schemas — this is what Unity Catalog looks like."
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "silverline catalog exists",
+            "statement": "SHOW CATALOGS LIKE 'silverline'",
+            "condition": { "op": "rows_gte", "n": 1 },
+            "successTemplate": "catalog silverline found",
+            "errorHint": "Run: CREATE CATALOG IF NOT EXISTS silverline in the SQL editor"
+          },
+          {
+            "type": "sql",
+            "name": "bronze, silver, gold schemas present",
+            "statement": "SELECT schema_name FROM silverline.information_schema.schemata WHERE schema_name IN ('bronze','silver','gold') ORDER BY schema_name",
+            "condition": { "op": "all_in_column", "column": 0, "values": ["bronze", "silver", "gold"] },
+            "errorHint": "Run: CREATE SCHEMA IF NOT EXISTS silverline.bronze (and silver, gold)"
+          },
+          {
+            "type": "sql",
+            "name": "managed volume in silverline.bronze",
+            "statement": "SHOW VOLUMES IN silverline.bronze",
+            "condition": { "op": "rows_gte", "n": 1 },
+            "successTemplate": "volume found in silverline.bronze",
+            "errorHint": "Run: CREATE VOLUME IF NOT EXISTS silverline.bronze.files in the SQL editor"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "project",
+      "phase": "Setup",
+      "label": "Project · dbt",
+      "icon": "🛠️",
+      "title": "Project · dbt — local tooling (mise, uv, dbt via OAuth)",
+      "content": {
+        "callout": {
+          "icon": "🛠️",
+          "body": "**Local tooling** is the \"project\" layer — `mise` (task runner), `uv` (Python package manager), and `dbt` (SQL transformations). Together they give you a reproducible, one-command dev environment for the whole tutorial.\n\ndbt uses **OAuth** to talk to the Starter Warehouse — no PAT or password stored in any config file. The `free` profile you authenticated in stage 01 is the only credential dbt needs."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 03 — set up local tooling",
+            "body": "1. In the repo at `tutorials/databricks/end-to-end/`, copy `.env.sample` to `.env` and fill in your workspace URL and Starter Warehouse ID from stage 01.\n\n2. Run `mise run setup` — installs `dbt-databricks`, `databricks-sdk`, and `databricks-sql-connector` via uv into a local virtual environment.\n\n3. Run `mise run dbt:debug` — proves dbt can reach the warehouse and `silverline` catalog via OAuth.\n   Expect: **All checks passed!**\n\n4. Smoke test:\n\n   ```bash\n   mise run sql 'SELECT current_catalog(), current_user()'\n   ```\n\n   Expect: `silverline | <your email>`\n\n5. If `dbt debug` fails on auth, re-run `databricks auth login --profile free` — the cached OAuth token may have expired (they last ~50 minutes)."
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "provision",
+      "phase": "Lakebase",
+      "label": "Provision",
+      "icon": "🐘",
+      "title": "Provision — create the Lakebase PG17 autoscaling project",
+      "content": {
+        "callout": {
+          "icon": "🐘",
+          "body": "**Lakebase** is Databricks' serverless Postgres 17. An **Autoscaling project** auto-scales and idles to ~0 quota when unused — you pay (in quota) only for active connections. Auth uses **short-lived OAuth tokens** minted on demand as the Postgres password — nothing static is stored or committed.\n\n**PG17 matters** because Lakebase CDF (native CDC) requires it. Use `postgres create-project`, not `database create-database-instance` — the latter only gives PG16."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 04 — provision the Lakebase project",
+            "body": "1. Create the PG17 Autoscaling project via the Databricks CLI:\n\n   ```bash\n   databricks --profile free postgres create-project silverline-oltp \\\n     --json '{\"spec\":{\"pg_version\":17}}' --timeout 15m -o json\n   ```\n\n   Expect `pg_version: 17` in the output. This takes 1–2 minutes.\n\n2. Capture the endpoint host:\n\n   ```bash\n   EP=projects/silverline-oltp/branches/production/endpoints/primary\n   databricks --profile free postgres get-endpoint \"$EP\" -o json\n   ```\n\n   Copy the `status.hosts.host` value into your `.env` as `LAKEBASE_HOST`.\n\n3. Mint a credential and verify connectivity:\n\n   ```bash\n   TOKEN=$(databricks --profile free postgres generate-database-credential \"$EP\" \\\n     -o json | jq -r '.token')\n   # then connect with psql and run:\n   SELECT version();\n   # expect: PostgreSQL 17.x over SSL\n   ```\n\n4. Add to `.env`:\n\n   ```\n   LAKEBASE_DB=databricks_postgres\n   LAKEBASE_USER=<your-databricks-email>\n   ```"
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "pg_or_rest",
+            "name": "Lakebase project is provisioned and reachable",
+            "pg_query": "SELECT version()",
+            "rest_fn": "listProjects",
+            "errorHint": "Run: databricks --profile free postgres create-project silverline-oltp --json '{\"spec\":{\"pg_version\":17}}'"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "seed",
+      "phase": "Lakebase",
+      "label": "Seed",
+      "icon": "🌱",
+      "title": "Seed — load Silverline Capital's 9-table OLTP",
+      "content": {
+        "callout": {
+          "icon": "🌱",
+          "body": "The seed stage loads **Silverline Capital's full 9-table operational model** into Lakebase. It uses a deterministic script (`MOCK_SEED=42`) so results are identical every run — safe to re-run if anything goes wrong.\n\nThe data represents a fictional equipment lease & loan finance company's full lifecycle: customers → applications → contracts → equipment → billing → payments."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 05 — seed Lakebase",
+            "body": "1. In your workspace, open **`SilverAIWolf/05-seed/05.1_seed_oltp`** (serverless) and click **Run All**. It mints a Lakebase credential via the SDK and seeds all 9 tables.\n\n   Expected counts: `customers=60 vendors=15 equipment=220 applications=140 contracts=85 contract_assets=180 payment_schedule=2904 invoices=1452 payments=1291`\n\n2. Run **`SilverAIWolf/05-seed/05.2_data_model`** (serverless, Run All) — shows the ERD, counts, and a segment analysis using psycopg.\n\n3. Run **`SilverAIWolf/05-seed/05.3_documents`** (serverless, Run All) — generates contract PDFs and credit memos and writes them to `/Volumes/silverline/bronze/files/`. Verify in Catalog Explorer.\n\n4. Once seeded, click any table tile below to query live rows from Lakebase.\n\n**Entity-relationship overview:**\n\n```\ncustomers ── applications ──▶ contracts ──◀ contract_assets ▶── equipment ──▶ vendors\n                                    │\n                                    ├──◀ payment_schedule\n                                    └──◀ invoices ──◀ payments\n```\n\n| Table | Role |\n|---|---|\n| `customers` | Businesses Silverline finances — segment, region, credit rating |\n| `vendors` | Equipment suppliers |\n| `equipment` | Individual financed assets (make, model, serial, cost) |\n| `applications` | Credit pipeline — submitted → approved → booked |\n| `contracts` | Booked lease/loan deals — type, status, APR, term |\n| `contract_assets` | M:N bridge — which equipment backs which contract |\n| `payment_schedule` | Amortization plan per period |\n| `invoices` | Bills issued — open / paid / overdue |\n| `payments` | Cash received against invoices |"
+          }
+        ]
+      },
+      "widgets": ["table-browser"],
+      "verify": {
+        "checks": [
+          {
+            "type": "pg_each",
+            "name_template": "{table} has rows",
+            "query_template": "SELECT count(*)::int AS c FROM {table}",
+            "tables": ["customers", "vendors", "equipment", "applications", "contracts", "contract_assets", "payment_schedule", "invoices", "payments"],
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint_template": "Table '{table}' is empty — run the seed notebook (05.1_seed_oltp)"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "data-api",
+      "phase": "Lakebase",
+      "label": "Data API",
+      "icon": "🌐",
+      "title": "Data API — expose Lakebase as a REST endpoint",
+      "content": {
+        "callout": {
+          "icon": "🌐",
+          "body": "The **Lakebase Data API** exposes your Postgres tables as a REST endpoint (PostgREST-compatible) with zero backend code. The business — or an agent — can read customers, contracts, and overdue invoices over plain HTTPS.\n\nAuth uses **M2M OAuth** (service principal), not your user identity. The SP mints a short-lived token against your workspace and passes it as the Postgres password — same ephemeral-credential pattern as stage 04, but for non-human callers."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 06 — enable the Data API",
+            "body": "1. **Enable the Data API (UI-only — no CLI toggle exists for this):** In your workspace, open **Database** (Lakebase) → click the `silverline-oltp` project → **Data API** page (under App Backend) → click **Enable Data API**.\n\n2. **Create a Service Principal** via the CLI:\n\n   ```bash\n   databricks --profile free service-principals create \\\n     --display-name \"silverline-data-api\" -o json\n   # note the applicationId\n\n   databricks --profile free service-principal-secrets-proxy create <sp-id> -o json\n   # note the .secret (shown once)\n   ```\n\n3. **Store the SP credentials** in a Databricks secret scope:\n\n   ```bash\n   databricks --profile free secrets create-scope silverline\n   databricks --profile free secrets put-secret silverline data_api_sp_client_id \\\n     --string-value \"<APP_ID>\"\n   databricks --profile free secrets put-secret silverline data_api_sp_secret \\\n     --string-value \"<SECRET>\"\n   ```\n\n4. **Grant the SP a Postgres role** (run as the database owner in psql or psycopg):\n\n   ```sql\n   CREATE EXTENSION IF NOT EXISTS databricks_auth;\n   SELECT databricks_create_role('<APP_ID>', 'SERVICE_PRINCIPAL');\n   GRANT \"<APP_ID>\" TO authenticator;\n   GRANT USAGE ON SCHEMA public TO \"<APP_ID>\";\n   GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"<APP_ID>\";\n   ```\n\n5. **Test a REST query:** Run notebook `SilverAIWolf/06-data-api/06.1_data_api_demo` — it reads SP creds from the secret scope, mints an M2M token, and queries customers, overdue invoices, and active contracts via HTTPS. You should see JSON rows."
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "ingest",
+      "phase": "Lakehouse",
+      "label": "Ingest",
+      "icon": "📥",
+      "title": "Ingest — land Lakebase data into bronze Delta",
+      "content": {
+        "callout": {
+          "icon": "📥",
+          "body": "**Ingest** is how OLTP data enters the Lakehouse. Lakebase is native to Databricks, so the first move is **zero-ETL**: register the project as a read-only Unity Catalog catalog and query live Postgres tables directly — no copy, no pipeline, no lag.\n\nWhen you want a governed Delta copy (with history and the medallion pipeline), you land into `silverline.bronze`. This stage shows four different patterns — from the simplest (zero-ETL) to the most complete (managed CDC)."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 07 — ingest Lakebase into the Lakehouse",
+            "body": "1. **Register as a native UC catalog** (Claude runs this CLI step via the connect stage):\n\n   ```bash\n   databricks --profile free api post \\\n     \"/api/2.0/postgres/catalogs?catalog_id=lakebase_silverline_oltp\" \\\n     --json '{\"spec\":{\"postgres_database\":\"databricks_postgres\",\"branch\":\"projects/silverline-oltp/branches/production\"}}'\n   ```\n\n   Then verify:\n\n   ```bash\n   mise run sql 'SELECT count(*) FROM lakebase_silverline_oltp.public.customers'\n   ```\n\n   Expect **60**. This is zero-ETL: live Postgres rows, no copy.\n\n2. Run `07.1_native_catalog` — explores the live OLTP via SQL (counts, a segment join) with zero data movement.\n\n3. Run `07.2_ctas_snapshot`:\n\n   ```sql\n   CREATE OR REPLACE TABLE silverline.bronze.customers\n     AS SELECT * FROM lakebase_silverline_oltp.public.customers;\n   -- … repeated for all 9 tables\n   ```\n\n   This is the bronze snapshot the medallion builds on.\n\n4. *Optional:* `07.3_watermark_cdc` (watermark-based incremental), `07.4_wal_cdc` (WAL logical decoding — delete-aware), `07.5_lakebase_cdf` (native managed CDC, requires external S3 — opt-in).\n\n| Pattern | Notebook | Handles Deletes? | Needs Cloud? |\n|---|---|---|---|\n| Native query (zero-ETL) | 07.1 | n/a | No |\n| Full CTAS snapshot | 07.2 | Yes (rewrite) | No |\n| Watermark CDC | 07.3 | No | No |\n| WAL logical-decoding CDC | 07.4 | Yes | No |\n| Lakebase CDF (native managed) | 07.5 | Yes | Yes (S3 for CDF destination) |"
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "bronze schema has Delta tables",
+            "statement": "SHOW TABLES IN silverline.bronze",
+            "condition": { "op": "rows_gte", "n": 2 },
+            "errorHint": "Run the 07.2_ctas_snapshot notebook to land Lakebase tables into bronze"
+          },
+          {
+            "type": "sql",
+            "name": "bronze.customers has rows",
+            "statement": "SELECT count(*) FROM silverline.bronze.customers",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "bronze.customers is empty — re-run 07.2_ctas_snapshot"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "medallion",
+      "phase": "Lakehouse",
+      "label": "Medallion",
+      "icon": "🏗️",
+      "title": "Medallion — bronze → silver → gold (three ways)",
+      "content": {
+        "callout": {
+          "icon": "🏗️",
+          "body": "The **medallion architecture** is the standard Lakehouse data quality pattern. Raw data from Lakebase lands in **Bronze** as-is — append-only, no transforms. A dbt pipeline then cleans, de-dupes, and joins it into **Silver** (conformed types, nulls handled). Another pass aggregates it into **Gold**: business-level tables like `gold_segment_portfolio` that BI tools and ML models query directly.\n\n**`bronze`** (raw / ingested) → **`silver`** (cleaned / conformed) → **`gold`** (business / serving)\n\nEach layer is a **Delta Lake** table in the Databricks SQL warehouse — a different store from Lakebase Postgres. Delta gives you ACID transactions, time travel, and incremental processing on top of cloud object storage."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 08 — three ways to build silver + gold",
+            "body": "1. Run **`08.1_build_ddl`** — defines empty `silver_*` and `gold_*_nb` tables (structure only, no data yet).\n\n2. Run **`08.2_build_dbt`** — creates and runs a Databricks Job with a native `dbt task`. dbt reads `dbt_project/` and outputs canonical `gold_segment_portfolio` and `gold_contract_aging`.\n\n3. Run **`08.3_build_sdp`** — creates and runs a Lakeflow/SDP declarative pipeline from `sdp_project/`. Uses `@dlt.table` + `@dlt.expect_or_drop` quality checks → `*_sdp` tables.\n\n4. Run **`08.4_build_notebook`** — runs a Workflow Job that `INSERT OVERWRITE`s the `_nb` tables defined in step 1 — the notebook/ELT approach.\n\n5. Run **`08.5_parity`** — compares all three gold outputs side-by-side with symmetric `EXCEPT` diffs. All diffs = 0 → identical results.\n\n| Approach | Tool | Key trade-off |\n|---|---|---|\n| Notebook (_nb) | Workflows | Most control, schedule it yourself |\n| dbt (canonical) | dbt + Job | Best portability + docs/tests |\n| SDP/Lakeflow (_sdp) | Declarative | Managed quality, least code to operate |\n\nEach layer is a **Delta Lake** table — ACID transactions, time travel (`VERSION AS OF N`), and lineage tracked automatically in Unity Catalog."
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "silver tables exist",
+            "statement": "SHOW TABLES IN silverline.silver",
+            "condition": { "op": "rows_gte", "n": 2 },
+            "errorHint": "No silver tables found — run the medallion notebooks (08.1–08.2)"
+          },
+          {
+            "type": "sql",
+            "name": "gold_segment_portfolio has rows",
+            "statement": "SELECT count(*) FROM silverline.gold.gold_segment_portfolio",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "gold_segment_portfolio is empty — run 08.2_build_dbt"
+          },
+          {
+            "type": "sql",
+            "name": "gold_contract_aging has rows",
+            "statement": "SELECT count(*) FROM silverline.gold.gold_contract_aging",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "gold_contract_aging is empty — run 08.2_build_dbt"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "refresh",
+      "phase": "Lakehouse",
+      "label": "Refresh · Live",
+      "icon": "⚡",
+      "title": "Refresh · Live — change the source, watch it stream",
+      "content": {
+        "callout": {
+          "icon": "⚡",
+          "body": "**Postgres LISTEN/NOTIFY** is a built-in pub-sub channel. Three database triggers on `customers`, `contracts`, and `invoices` call `pg_notify('silverline_changes', …)` on every INSERT, UPDATE, or DELETE. The server holds a dedicated connection that called `LISTEN silverline_changes` at startup — so changes arrive in microseconds with no polling.\n\nThose events are forwarded to the browser as a **GraphQL subscription over WebSocket**, which is why they appear instantly. Hit **⚡ Simulate a change** in the live feed below to watch an INSERT → UPDATE → DELETE sequence land in real time."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 09 — refresh the pipeline after a source change",
+            "body": "1. Run **`09.1_add_triggers`** — installs `pg_notify` triggers on `customers`, `contracts`, and `invoices`. After this, the live feed below will show changes in real time.\n\n2. Apply the deterministic change-set (modifies 3 customers, updates 2 contracts, adds 5 invoices):\n\n   ```bash\n   mise run apply-changeset\n   ```\n\n   Watch the live feed light up with the events.\n\n3. Re-ingest the changed tables into bronze:\n\n   ```bash\n   mise run ingest:refresh\n   # or run 09.2_refresh_ingest in the workspace\n   ```\n\n4. Re-run the dbt medallion to rebuild silver + gold:\n\n   ```bash\n   mise run dbt:run\n   ```\n\n5. Verify lineage end-to-end:\n\n   ```sql\n   SELECT count(*) FROM silverline.silver.silver_invoices;   -- should be > before\n   SELECT count(*) FROM silverline.gold.gold_contract_aging;  -- should include new invoices\n   ```"
+          }
+        ]
+      },
+      "widgets": ["live-feed"],
+      "verify": {
+        "checks": [
+          {
+            "type": "pg",
+            "name": "pg_notify triggers exist on source tables",
+            "query": "SELECT count(*)::int AS c FROM pg_trigger WHERE tgrelid = ANY(ARRAY['customers'::regclass,'contracts'::regclass,'invoices'::regclass]::oid[])",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} trigger(s) on customers, contracts, invoices",
+            "errorHint": "No change-notification triggers found — run 09.1_add_triggers notebook"
+          },
+          {
+            "type": "state",
+            "name": "server is actively listening for changes",
+            "key": "isListening",
+            "successTemplate": "LISTEN silverline_changes active",
+            "errorHint": "LISTEN connection not active — reconnect via the Connect step to re-establish it"
+          },
+          {
+            "type": "sql",
+            "name": "silver_invoices rebuilt after change-set",
+            "statement": "SELECT count(*) FROM silverline.silver.silver_invoices",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "silver_invoices is empty — re-run the dbt medallion after applying the change-set"
+          },
+          {
+            "type": "sql",
+            "name": "gold_contract_aging rebuilt after change-set",
+            "statement": "SELECT count(*) FROM silverline.gold.gold_contract_aging",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "gold_contract_aging is empty — re-run the dbt medallion after applying the change-set"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "business-layer",
+      "phase": "Analytics",
+      "label": "Business Layer",
+      "icon": "📋",
+      "title": "Business Layer — document gold tables for Genie",
+      "content": {
+        "callout": {
+          "icon": "📋",
+          "body": "The gold tables exist but aren't documented. **COMMENTs on tables and columns** are what Genie and AI assistants read to understand the schema — \"billed\" maps to `total_billed`, \"overdue\" maps to `overdue_amount`. An undocumented gold layer means worse Genie answers.\n\nA `customer_360` view rolls contract aging up to the customer grain — one row per customer with their overdue balance and total billed. This is what a collections team or a Genie query would naturally ask for."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 10 — document the business layer",
+            "body": "1. Add table and column COMMENTs to the gold tables (paste into SQL editor → Run):\n\n   ```sql\n   COMMENT ON TABLE silverline.gold.gold_segment_portfolio IS\n     'Portfolio by customer segment — contract counts, principal, APR, residual.';\n   ALTER TABLE silverline.gold.gold_segment_portfolio ALTER COLUMN segment\n     COMMENT 'Customer business segment.';\n   ALTER TABLE silverline.gold.gold_segment_portfolio ALTER COLUMN total_principal\n     COMMENT 'Sum of contract principal financed for the segment.';\n   -- (same pattern for each column on both tables)\n   ```\n\n2. Add COMMENTs to `gold_contract_aging` columns: `contract_id`, `overdue_amount`, `open_amount`, `paid_amount`, `total_billed`.\n\n3. Create the `customer_360` view (customer profile + contract aging, rolled to customer grain):\n\n   ```sql\n   CREATE OR REPLACE VIEW silverline.gold.customer_360\n   COMMENT 'Per-customer collections view: profile + contract aging.'\n   AS\n   SELECT c.customer_id, c.legal_name, c.segment, c.region, c.credit_rating,\n          sum(a.overdue_amount) AS overdue_amount,\n          sum(a.total_billed)   AS total_billed\n   FROM silverline.gold.gold_contract_aging a\n   JOIN silverline.silver.silver_contracts ct ON ct.contract_id = a.contract_id\n   JOIN silverline.silver.silver_customers c  ON c.customer_id  = ct.customer_id\n   GROUP BY c.customer_id, c.legal_name, c.segment, c.region, c.credit_rating;\n   ```\n\n4. Verify: run `DESCRIBE TABLE EXTENDED silverline.gold.gold_segment_portfolio` and check that comments appear. Browse the table in **Catalog Explorer** to see them in the UI."
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "customer_360 view exists in silverline.gold",
+            "statement": "SHOW VIEWS IN silverline.gold LIKE 'customer_360'",
+            "condition": { "op": "rows_gte", "n": 1 },
+            "successTemplate": "customer_360 view found",
+            "errorHint": "customer_360 view not found — run step 3 above to create it"
+          },
+          {
+            "type": "sql",
+            "name": "gold tables have COMMENT documentation",
+            "statement": "SELECT count(*) FROM silverline.information_schema.tables WHERE table_schema = 'gold' AND comment IS NOT NULL AND comment != ''",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} documented table(s)",
+            "errorHint": "No gold tables have COMMENTs yet — run step 1 above to add them"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "semantic",
+      "phase": "Analytics",
+      "label": "Semantic · Metrics",
+      "icon": "📐",
+      "title": "Semantic · Metrics — governed MEASURE() Metric View",
+      "content": {
+        "callout": {
+          "icon": "📐",
+          "body": "`gold_segment_portfolio` answers one question (portfolio by segment). A **Metric View** answers *every* slice of the same governed billing measures — by region, credit rating, contract type, month — from one definition.\n\n`MEASURE()` functions define KPIs *once* so they can't drift between dashboards, notebooks, and Genie. When Genie answers \"total billed by region\" it uses the same `MEASURE(total_billed)` as the chart tile — they can never disagree."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 11 — create the Metric View",
+            "body": "1. Open `sql/portfolio_metrics.sql` in the repo — review the measures (`total_billed`, `invoice_count`, `overdue_amount`, `overdue_ratio`) and dimensions (`segment`, `region`, `credit_rating`, `contract_type`, `status`, `invoice_date`).\n\n2. Paste the full SQL into the **Databricks SQL editor** and run. The `WITH METRICS` YAML block is finicky over the CLI — use the editor.\n\n3. Query the metric view — one definition, any slice:\n\n   ```sql\n   -- By segment:\n   SELECT segment, MEASURE(total_billed) AS total_billed\n   FROM silverline.gold.portfolio_metrics GROUP BY segment;\n\n   -- By region and contract type (no new SQL logic, just a different GROUP BY):\n   SELECT region, contract_type, MEASURE(overdue_ratio) AS overdue_ratio\n   FROM silverline.gold.portfolio_metrics GROUP BY region, contract_type;\n   ```\n\n4. Verify the metric view matches the physical gold total:\n\n   ```sql\n   WITH m AS (SELECT MEASURE(total_billed) tb FROM silverline.gold.portfolio_metrics),\n        g AS (SELECT sum(total_billed)     tb FROM silverline.gold.gold_contract_aging)\n   SELECT (SELECT tb FROM m) AS metric_view_billed,\n          (SELECT tb FROM g) AS gold_billed,\n          CASE WHEN (SELECT tb FROM m) <=> (SELECT tb FROM g)\n               THEN 'MATCH' ELSE 'DRIFT' END\n   ```\n\n   Expect: **MATCH**\n\n5. *Optional:* run `11.2_why_metrics` notebook to see the \"average of averages\" trap — a hand-rolled overdue ratio can be 7.5× wrong vs the governed `MEASURE()`."
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "portfolio_metrics metric view exists",
+            "statement": "SHOW TABLES IN silverline.gold LIKE 'portfolio_metrics'",
+            "condition": { "op": "rows_gte", "n": 1 },
+            "successTemplate": "portfolio_metrics found",
+            "errorHint": "portfolio_metrics not found — paste sql/portfolio_metrics.sql into the SQL editor and run"
+          },
+          {
+            "type": "sql",
+            "name": "portfolio_metrics returns data",
+            "statement": "SELECT count(*) FROM silverline.gold.portfolio_metrics",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "portfolio_metrics returns no rows — check the metric view definition"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "ai-bi",
+      "phase": "Analytics",
+      "label": "AI/BI · Genie",
+      "icon": "🤖",
+      "title": "AI/BI · Genie — dashboard + natural-language queries",
+      "content": {
+        "callout": {
+          "icon": "🤖",
+          "body": "**AI/BI dashboards and Genie** both read the same `portfolio_metrics` Metric View — so a chart tile and a Genie answer for \"total billed\" can never disagree. Genie translates plain English into SQL using the governed `MEASURE()` definitions, not guessed `SUM()` joins.\n\nThis is the payoff of the whole pipeline: a non-technical user asks a question in plain English and gets back an exact, governed answer that matches the dashboard — because both are powered by the same semantic layer you built in stage 11."
+        },
+        "sections": [
+          {
+            "heading": "What to do in stage 12 — AI/BI dashboard + Genie",
+            "body": "1. Create the **AI/BI dashboard** from `dashboards/portfolio_dashboard.lvdash.json`:\n\n   ```bash\n   databricks lakeview create \\\n     --display-name \"Silverline Capital — Portfolio (governed metrics)\" \\\n     --warehouse-id \"$DATABRICKS_WAREHOUSE_ID\" \\\n     --serialized-dashboard \"$(cat dashboards/portfolio_dashboard.lvdash.json)\"\n\n   databricks lakeview publish <dashboard_id> \\\n     --warehouse-id \"$DATABRICKS_WAREHOUSE_ID\" --embed-credentials\n   ```\n\n   Open it in the UI and confirm three tiles: billed by segment, billed by contract type, overdue ratio by region — all using `MEASURE(...)`.\n\n2. Create the **Genie space** from `dashboards/genie_space.json`:\n\n   ```bash\n   databricks genie create-space \"$DATABRICKS_WAREHOUSE_ID\" \\\n     \"$(cat dashboards/genie_space.json)\" \\\n     --title \"Silverline Capital — Portfolio Genie\"\n   ```\n\n3. Open the Genie space and ask in natural language:\n   - *\"What is the total billed by segment?\"* → expect `MEASURE(total_billed) GROUP BY segment`\n   - *\"Which region has the highest overdue ratio?\"* → expect `MEASURE(overdue_ratio) GROUP BY region`\n\n4. Run `12.2_genie_programmatic` notebook — Genie as a programmatic service: SDK (`w.genie.start_conversation_and_wait`), multi-turn, CLI (`databricks genie start-conversation`), and an `ai_query()` call against a credit memo.\n\n| Without semantic layer | With Metric View + Genie |\n|---|---|\n| Genie guesses `SUM()` / joins → can be wrong | Uses `MEASURE(total_billed)` → exact, governed |\n| Dashboard SQL + Genie SQL can drift | Both reference the same measure definition |\n| \"Overdue ratio\" reimplemented per consumer | One definition → dashboard == Genie == gold |"
+          }
+        ]
+      },
+      "verify": {
+        "checks": [
+          {
+            "type": "sql",
+            "name": "portfolio_metrics metric view has data",
+            "statement": "SELECT count(*) FROM silverline.gold.portfolio_metrics",
+            "condition": { "op": "count_gt", "n": 0 },
+            "successTemplate": "{count} rows",
+            "errorHint": "portfolio_metrics is empty — check the semantic stage completed first"
+          },
+          {
+            "type": "rest",
+            "name": "Silverline AI/BI dashboard published",
+            "fn": "listDashboards",
+            "condition": { "op": "find_match", "fields": ["display_name"], "pattern": "silverline", "flags": "i" },
+            "successTemplate": "\"{display_name}\" ({dashboard_id}...)",
+            "errorHint": "No Silverline dashboard found — run: databricks lakeview create ..."
+          },
+          {
+            "type": "rest",
+            "name": "Silverline Genie space created",
+            "fn": "listGenieSpaces",
+            "condition": { "op": "find_match", "fields": ["title", "name"], "pattern": "silverline", "flags": "i" },
+            "successTemplate": "\"{title}\" space found",
+            "errorHint": "No Silverline Genie space found — run: databricks genie create-space ...",
+            "on_404": "Genie API not reachable — confirm your workspace has AI/BI Genie enabled"
+          }
+        ]
+      }
+    }
+  ]
+}
