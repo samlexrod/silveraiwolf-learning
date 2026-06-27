@@ -3,9 +3,9 @@
 #   server  → pre-built GraphQL/Apollo bundle (no source required)
 #   client  → pre-built React bundle served by nginx
 #
-# Optional: add ANTHROPIC_API_KEY to enable the Claude chat assistant.
-# Copy .env.example to .env and fill in the key, or pass it inline:
-#   ANTHROPIC_API_KEY=sk-ant-... docker compose up
+# No setup required — just run and open the browser.
+# The Claude chat assistant lets you paste your Anthropic API key
+# directly in the UI (stored in your browser only, never on disk).
 #
 # Usage:
 #   docker compose up --build
@@ -17,7 +17,6 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - PLATFORM_API_KEY=${PLATFORM_API_KEY:-9cf6fd401b5d0a7f2b56f9369d3f40059b8143772286bea373eb5a01f9ccad47}
       - PLATFORM_API_URL=${PLATFORM_API_URL:-https://silveraiwolf-platform-api.fly.dev}
     restart: unless-stopped
