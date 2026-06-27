@@ -18,7 +18,7 @@ services:
       - "4000:4000"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - PLATFORM_API_KEY=${PLATFORM_API_KEY:-}
+      - PLATFORM_API_KEY=${PLATFORM_API_KEY:-9cf6fd401b5d0a7f2b56f9369d3f40059b8143772286bea373eb5a01f9ccad47}
       - PLATFORM_API_URL=${PLATFORM_API_URL:-https://silveraiwolf-platform-api.fly.dev}
     restart: unless-stopped
 
