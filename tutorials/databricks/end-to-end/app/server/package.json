@@ -1,0 +1,5 @@
+{
+  "name": "silverline-explorer-server",
+  "private": true,
+  "type": "module"
+}

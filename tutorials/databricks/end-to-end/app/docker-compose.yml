@@ -1,0 +1,30 @@
+# Silverline Lakehouse Explorer — runs anywhere with Docker.
+#
+#   server  → pre-built GraphQL/Apollo bundle (no source required)
+#   client  → pre-built React bundle served by nginx
+#
+# No setup required — just run and open the browser.
+# The Claude chat assistant lets you paste your Anthropic API key
+# directly in the UI (stored in your browser only, never on disk).
+#
+# Usage:
+#   docker compose up --build
+#   open http://localhost:8080
+
+services:
+  server:
+    build: ./server
+    ports:
+      - "4000:4000"
+    environment:
+      - PLATFORM_API_KEY=${PLATFORM_API_KEY:-9cf6fd401b5d0a7f2b56f9369d3f40059b8143772286bea373eb5a01f9ccad47}
+      - PLATFORM_API_URL=${PLATFORM_API_URL:-https://silveraiwolf-platform-api.fly.dev}
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    restart: unless-stopped

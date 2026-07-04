@@ -42,13 +42,19 @@ databricks version    # expect the Go CLI v0.2xx+ (not the legacy Python 0.1x da
 ```
 
 - If it prints **v0.2xx+**, you're set — say so and move on.
-- If it's **missing or the legacy 0.1x**, tell the learner and offer to install/update:
+- If it's **missing or the legacy 0.1x**, tell the learner and offer to install/update. **Detect the
+  platform first** and use the matching installer:
   ```bash
   # macOS (Homebrew):
   brew tap databricks/tap && brew install databricks
-  # or the universal installer (any platform):
+  # Windows (winget):
+  winget install --id Databricks.DatabricksCLI -e --accept-source-agreements --accept-package-agreements
+  # or the universal installer (macOS/Linux):
   # curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
   ```
+  > 🪟 **Windows note:** winget edits `PATH` at the machine/user level, so a freshly installed `databricks`
+  > won't resolve in the current shell until you refresh `PATH` or open a new terminal:
+  > `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`
 
 **Pause.** Report the version you found (render as `AskUserQuestion`); only ask the learner to act if an
 install/update is needed.
@@ -95,6 +101,16 @@ databricks --profile free current-user me | jq '{userName, active}'
 databricks --profile free warehouses list -o json \
   | jq -r '.[] | "\(.id)  \(.name)  \(.warehouse_type)  \(.state)"'
 ```
+
+> 🪟 **Windows note:** `jq` isn't installed by default. Skip the `| jq …` pipes and parse the CLI's
+> `-o json` output with PowerShell instead:
+> ```powershell
+> $me = databricks --profile free current-user me -o json | ConvertFrom-Json
+> [PSCustomObject]@{ userName = $me.userName; active = $me.active }
+> $wh = databricks --profile free warehouses list -o json | ConvertFrom-Json
+> $wh | ForEach-Object { "{0}  {1}  {2}  {3}" -f $_.id, $_.name, $_.warehouse_type, $_.state }
+> ```
+> (Or `winget install jqlang.jq` if you prefer the `jq` pipes.)
 
 Note the **warehouse id** of the Starter Warehouse (often named *"Starter Warehouse"* / *"Serverless
 Starter Warehouse"*). Save both values for the next stages — they're **not secret**, so a local note is fine:

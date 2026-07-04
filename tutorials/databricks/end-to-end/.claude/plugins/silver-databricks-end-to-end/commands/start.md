@@ -47,6 +47,52 @@ Ground rules (carry through every stage):
   recommend or default to the workspace UI for provisioning; mention it only for awareness. This is the
   complement to the notebooks rule: **infra = CLI/code; data workloads = notebooks the learner runs.**
 - ⚠️ **Verify, don't assume** — Free Edition moves fast and docs lag; if a step differs, adapt.
+- 🪟 **Windows environment (don't re-derive — these are confirmed deltas):** when the learner is on Windows,
+  the example commands assume macOS/Linux, so adapt rather than guess:
+  - **CLIs may not be on the shell `PATH`.** The `databricks` CLI (winget) and the `claude` CLI (bundled in
+    the desktop app at `%APPDATA%\Claude\claude-code\<version>\claude.exe`) often aren't on `PATH`. Refresh
+    `PATH` from the registry (`$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`)
+    or call by full path; a freshly opened shell also picks up winget's PATH edits.
+  - **Install CLIs with `winget`, not `brew`** — e.g. `winget install --id Databricks.DatabricksCLI -e`.
+  - **`jq` is not installed.** Don't pipe to `jq`; run the command with `-o json` and parse with PowerShell
+    `ConvertFrom-Json` (or `winget install jqlang.jq` first).
+  - **Always pass `--json` as a BOM-less `@file`, never inline.** Two Windows traps: (a) inline
+    `--json '{"k":"v"}'` loses its double quotes through PowerShell's native-arg quoting (CLI sees `{k...` →
+    `invalid character`); (b) `Set-Content -Encoding utf8` writes a UTF-8 **BOM** the CLI rejects
+    (`invalid character 'ï'`). So write the JSON to a temp file BOM-less and reference it with `@`:
+    `[System.IO.File]::WriteAllText($path, $json, (New-Object System.Text.UTF8Encoding($false)))` then
+    `databricks ... --json "@$path"`. Applies to `api post /api/2.0/sql/statements`, `postgres create-project`,
+    and every other `--json` call.
+  - **`psql` is not installed.** For Lakebase/Postgres connectivity checks, use **psycopg** (already in the
+    project venv) via `uv run python` — connect with `sslmode="require"` and the minted token as the password —
+    instead of the stage's `psql` one-liners.
+  - **Set `PYTHONUTF8=1` before running any tutorial Python script.** They print `✓`/emoji, and Windows
+    Python defaults stdout to **cp1252**, which crashes with `UnicodeEncodeError: '✓'` *after* doing the
+    work (misleading non-zero exit). `$env:PYTHONUTF8 = "1"` (or `PYTHONIOENCODING=utf-8`) fixes it. The seed
+    scripts are idempotent, so a re-run with UTF-8 mode is safe.
+  - **Doc/volume uploads want a PAT, but we're OAuth-only.** `generate_contract_docs.py`'s uploader needs
+    `DATABRICKS_TOKEN`. Instead, generate with `--local-only` then upload via the OAuth CLI:
+    `databricks --profile free fs cp <localdir> dbfs:/Volumes/<cat>/<schema>/<vol>/<sub> --recursive --overwrite`.
+  - **`databricks lakeview create` / `genie create-space` can hang headlessly (ai-bi stage).** Observed on
+    Windows Free Edition: the CLI create blocks with no output (likely waiting on stdin), and even a direct
+    REST `POST /api/2.0/lakeview/dashboards` did not complete, while `GET` (list) returns instantly — i.e. the
+    dashboard-create service was unresponsive on that workspace. Bound any attempt with a timeout, and if it
+    doesn't return, fall back to **creating the dashboard/Genie space in the workspace UI** (the stage is meant
+    for UI exploration anyway): Dashboards → import `dashboards/portfolio_dashboard.lvdash.json`; Genie → new
+    space scoped to `silverline.gold.portfolio_metrics`.
+  - **REST/HTTP steps use `curl` + `jq` + bash (`set -a; . ./.env`, `awk`).** On Windows use PowerShell
+    `Invoke-RestMethod` / `Invoke-WebRequest` instead. Two specifics for the data-api stage: read the
+    workspace/org id from the **`X-Databricks-Org-Id` response header** of a SCIM `Me` call
+    (`(Invoke-WebRequest …).Headers['x-databricks-org-id']`), and a Databricks **secret value comes back
+    base64-encoded** — `[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((... secrets get-secret ... -o json | ConvertFrom-Json).value))`.
+  - **`mise run <task> '<multi-word arg>'` mangles the quoted argument on Windows** — only the first token
+    reaches the task (e.g. `mise run sql 'SELECT current_catalog()'` sends just `SELECT` → parse error). For
+    arg-bearing tasks (`sql`, `dbt:run -- …`, `docs:seed -- …`), **bypass mise**: call the underlying script
+    via `uv` with a properly PowerShell-quoted arg. Arg-less tasks (`setup`, `dbt:debug`) work fine through mise.
+  - **A direct `uv run` does NOT load `.env`** (only `mise` injects `[env]._.file`). Before calling a script
+    directly, set the non-secret vars yourself from `.env` (e.g. `DATABRICKS_HOST`, `DATABRICKS_WAREHOUSE_ID`).
+  - **Prefer the PowerShell tool for CLI calls** (Git Bash also works for POSIX-y bits like the path-resolve
+    and `PROGRESS.md` heredoc). Each stage repeats the specific Windows substitution where it matters.
 - **Never auto-run the whole tutorial.** Advance only on the learner's explicit confirmation.
 
 ## Step 1 — Resolve paths (run this first)

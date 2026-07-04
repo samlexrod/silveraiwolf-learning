@@ -40,6 +40,12 @@ file says if it differs. If it's already installed, skip to step 4 (just remind 
 
 Both sources use the repo-level **`silveraiwolf`** marketplace → install spec `silver-databricks-end-to-end@silveraiwolf`.
 
+> 🪟 **Windows:** the `claude` CLI ships **inside the desktop app** and is often **not on `PATH`** (so
+> `claude …` fails with "command not found"). Locate the bundled binary and call it by full path — it's at
+> `%APPDATA%\Claude\claude-code\<version>\claude.exe` (e.g.
+> `& "$env:APPDATA\Claude\claude-code\2.1.181\claude.exe" plugin install silver-databricks-end-to-end@silveraiwolf`).
+> Find the exact path with `Get-ChildItem "$env:APPDATA\Claude\claude-code" -Recurse -Filter claude.exe`.
+
 **Local source** — ⚠️ **use the ABSOLUTE repo-root path** (a relative path is misread as a GitHub repo):
 
 ```bash
@@ -62,8 +68,10 @@ Use **one source, not both** (same marketplace name `silveraiwolf` → collision
 
 ### 4. Tell them what happens next
 
-1. **Run `/reload-skills`** to surface the plugin's commands in the **current** session (no restart). If they
-   still don't show, start a fresh Claude session.
+1. **Restart Claude Code** so the plugin's slash **commands** register. `/reload-skills` refreshes *skills*
+   in the current session, but a newly installed plugin's *commands* generally do **not** surface until a
+   full restart — so if `/silver-databricks-end-to-end:start` reports **"Unknown command"** right after
+   install, that's expected; restart and try again (the command is already in `~/.claude/plugins/cache/`).
 2. Run **`/silver-databricks-end-to-end:start`** — the Stage 0 roadmap listing all 12 stages.
 3. Walk the stages in order: `connect → landing-zone → project → provision → seed → data-api → ingest →
    medallion → refresh → business-layer → semantic → ai-bi`. Each names its precondition + "Next:".
