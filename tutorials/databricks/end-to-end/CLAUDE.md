@@ -2,7 +2,7 @@
 
 Shared guidance for the **Databricks end-to-end** tutorial — a single Databricks **Free Edition**
 workload tutorial walked as ordered stages, grouped into phases (`setup` · `lakebase` · `lakehouse` ·
-`analytics`, with `ml` · `agents` planned). This file is **inherited by everything** under
+`analytics` · `retrieval`, with `agentic-reporting` and `ml` planned). This file is **inherited by everything** under
 `tutorials/databricks/end-to-end/` (CLAUDE.md loads up the directory tree). It layers on top of the
 repo-level `CLAUDE.md` and the shared `docs/AUTHORING.md` conventions (the explain-then-start gate,
 AskUserQuestion/Task-tool usage, presentation rules). Where they conflict, **this file wins** inside
@@ -13,7 +13,7 @@ AskUserQuestion/Task-tool usage, presentation rules). Where they conflict, **thi
 Teach the data + AI **workloads** you can run on **Databricks Free Edition** — **$0, serverless-only, no
 cloud account or infrastructure**. It's the no-cloud, Free Edition counterpart to a full cloud-infra
 deployment (Azure/Terraform) — Free Edition has no infrastructure layer to provision. **One tutorial, installed once,
-walked as 12 ordered stages** (setup → lakebase → lakehouse → analytics) — Free Edition is a
+walked as 13 ordered stages** (setup → lakebase → lakehouse → analytics → retrieval) — Free Edition is a
 platform/sandbox and the stages build on each other, so it's a single continuous path, not separate
 tracks.
 
@@ -84,13 +84,31 @@ per-stage skills** (they cluttered the menu):
 - `commands/cleanup.md` — `/silver-databricks-end-to-end:cleanup`. Tears down **every** resource the tutorial
   created (back to the fresh $0 state) by running `scripts/cleanup.sh` (idempotent); keeps the shared Starter
   Warehouse, and reminds about the learner-owned AWS resources it can't touch.
-- `stages/NN-<name>.md` — the 12 stage docs (plain markdown, **not** invokable skills), read on demand by
+- `stages/NN-<name>.md` — the 13 stage docs (plain markdown, **not** invokable skills), read on demand by
   the orchestrator. Setup `01-connect · 02-landing-zone · 03-project`; Lakebase `04-provision · 05-seed ·
   06-data-api`; Lakehouse `07-ingest · 08-medallion · 09-refresh`; Analytics `10-business-layer ·
-  11-semantic · 12-ai-bi`.
+  11-semantic · 12-ai-bi`; Retrieval `13-vector-search` (Mosaic AI Vector Search over the seeded contract
+  docs → a UC-function retriever tool).
 
-That's the **entire shipped tutorial** — `plugin.json` + `commands/{start,cleanup}.md` + `stages/`. Nothing
-else in the plugin dir.
+That's the **entire shipped tutorial** — `plugin.json` + `commands/{start,cleanup}.md` + `stages/`.
+Nothing else in the plugin dir.
+
+**Retrieval stage (13, `vector-search`) — verified facts (live 2026-07-10, see [[fe-vector-search-verified]]).**
+Mosaic AI Vector Search runs end-to-end on FE at $0: `vector-search-endpoints create-endpoint <name> STANDARD`
+(one endpoint), a **CDF** source Delta table, a **delta-sync** index **auto-embedding via `databricks-bge-large-en`**,
+then `vector_search()` query. **PDFs parse natively** with `ai_parse_document(content)` over
+`READ_FILES(..., format => 'binaryFile')` (returns `document.elements[]`; concat with `transform(...:content)`).
+**Gotchas the stage/notebook already handle:** the endpoint reports `ONLINE` *instantly but misleadingly* —
+real compute provisions **lazily on first index attach**, so the **first sync takes ~10–20 min**; a query the
+instant `ready=True` can 400 during a re-sync (retry). `vector_search`'s `num_results` must be a **constant**
+(a `k` function-param fails `NON_FOLDABLE_ARGUMENT`) → the UC-function retriever hardcodes it. The `vector_search()`
+TVF returns `chunk_id · doc_id · doc_type · source_path · content · search_score`. Deliverables: notebooks
+`13.1_build_index` (parse→index) + `13.2_retrieval` (four ways); the `silverline.gold.search_docs(query)` UC
+function is the retriever tool a future agent can wield alongside Genie.
+
+**Agentic reporting — a planned future capstone (not in this 13-stage release).** A later tutorial/PR will add
+an agentic-reporting phase (Lakebase copy-on-write branching + an Omnigent agent driving the loop); it is
+deferred here.
 
 > 🛠️ **`ROADMAP.md` is an author/build doc, NOT shipped.** It lives at the **tutorial root**
 > (`tutorials/databricks/end-to-end/ROADMAP.md`), **outside** the plugin, so it is never installed and the
@@ -100,10 +118,10 @@ else in the plugin dir.
 **State / resume:** the orchestrator persists progress to a human-readable `PROGRESS.md` in the learner's
 tutorial dir (`tutorials/databricks/end-to-end/PROGRESS.md`, gitignored) — a stage table (✅/▶️/☐) plus a
 Notes section for captured values. A fresh chat re-reads it and picks up at the current stage. Dependency:
-Setup → Lakebase → Lakehouse → Analytics (→ `ml` | `agents` when built).
+Setup → Lakebase → Lakehouse → Analytics → Retrieval (→ `agentic-reporting` | `ml` when built).
 
 > Adding a stage = new `stages/NN-<name>.md` + a row in the `PROGRESS.md` template inside
-> `commands/start.md` + a row in `ROADMAP.md` (the author doc). Adding a future phase (`ml`, `agents`) =
+> `commands/start.md` + a row in `ROADMAP.md` (the author doc). Adding a future phase (`agentic-reporting`, `ml`) =
 > more stage docs in the same plugin — still no new skills/commands.
 
 ## Stage-doc authoring conventions

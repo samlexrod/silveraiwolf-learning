@@ -19,6 +19,12 @@ Shared conventions for every tutorial in this repo. A tutorial's own `CLAUDE.md`
 2. **Open with cost framing that matches the platform.** Free-tier tutorials state cost as fair-use
    **quota**, never $. Any real-money step (a learner's own cloud account) is an explicit **opt-in** callout.
 3. `## Section N — <title>` interactive steps; end each with **`Pause.`** + an `AskUserQuestion`.
+   **Gates and pauses are always the interactive `AskUserQuestion` tool prompt, never a free-text
+   question** — if the learner cancels it, re-render it (adjusting the options if they missed the mark)
+   rather than downgrading to prose. **And never ask blind**: show the section's real output + a
+   plain-language read of it *before* the prompt, and make the prompt text itself recap what just ran and
+   the key result (a bare "Continue?" is never acceptable) — the learner must never face a popup without
+   the evidence for the decision in it.
 4. End with a `## Recap`. The orchestrator (`commands/start.md`) owns progression and the `Next:` prompts —
    stage docs don't chain themselves.
 5. Reference sibling stages by bare name (e.g. "the `seed` stage"), not as slash-commands.
