@@ -135,7 +135,7 @@ for row in (res.result.data_array or []):
 
 # MAGIC %sql
 # MAGIC -- Call the tool like any table function (one arg — num_results is fixed inside the function):
-# MAGIC SELECT doc_id, doc_type, search_score
+# MAGIC SELECT doc_id, doc_type, content, search_score
 # MAGIC FROM silverline.gold.search_docs('agreements financing wheel loaders');
 # MAGIC -- verified live → top hits are Wheel Loader agreements (Doosan/Volvo), scores ~0.66–0.67.
 

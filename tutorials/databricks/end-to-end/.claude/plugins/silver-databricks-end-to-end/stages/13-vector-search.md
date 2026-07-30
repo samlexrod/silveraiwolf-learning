@@ -36,20 +36,23 @@ Warehouse runs. (Claude can confirm live: `databricks -p free fs ls dbfs:/Volume
 
 This is an **interactive walkthrough** — pause after each section.
 
-> 🏗️ **Provisioned via CLI + notebook — not clicked.** The **endpoint** is created from the CLI
-> (`databricks vector-search-endpoints create-endpoint`); the **parse → chunk → index** workload runs as the
-> notebook `13-vector-search/13.1_build_index`, and the retrieval patterns as `13.2_retrieval`. Claude pushes
-> both; the learner runs them on serverless.
+> 🏗️ **Provisioned in code — not clicked.** The **endpoint**, the **parse → chunk → index** workload, and the
+> retrieval patterns all run from the notebooks: `13-vector-search/13.1_build_index` creates the endpoint (via
+> the **Python SDK**, with the **CLI equivalent shown beside it**) and builds the table + index; `13.2_retrieval`
+> runs the four query patterns. Claude pushes both; the learner runs them on serverless.
 
 ---
 
-## Section 1 — Create the Vector Search endpoint (CLI) + the provisioning reality
+## Section 1 — Create the Vector Search endpoint (in the notebook; CLI shown too) + the provisioning reality
 
-Claude creates the single Free-Edition endpoint:
+The endpoint is created **inside `13.1_build_index` (Section 1)** — you run it, so the whole build lives in one
+notebook. The cell uses the **Python SDK** (`w.vector_search_endpoints.create_endpoint(...)`, idempotent — it
+reuses `silverline-vs` if it already exists). The **CLI does the identical thing** and is shown right beside the
+code, so you learn both and can reach for the CLI in a script or CI:
 
 ```bash
 databricks -p free vector-search-endpoints create-endpoint silverline-vs STANDARD --no-wait
-databricks -p free vector-search-endpoints get-endpoint silverline-vs   # state, num_indexes
+databricks -p free vector-search-endpoints get-endpoint    silverline-vs   # state, num_indexes
 ```
 
 > ⚠️ **`ONLINE` is misleading on Free Edition — verified live.** The endpoint flips to `state: ONLINE`
@@ -118,6 +121,10 @@ w.vector_search_indexes.create_index(
 
 The notebook then **waits for the first sync** (the ~10–20 min from Section 1's warning), polling
 `get_index(...).status.ready` until the chunks are indexed.
+
+> 🔀 **Optional — the other index type, live.** `13.3_direct_access_demo` builds a **Direct Vector Access**
+> index (no source table — you compute the embeddings and upsert the raw vectors yourself), queries it by
+> vector, then tears down. Run it for a hands-on contrast to the delta-sync index above.
 
 **Pause.** Confirm the index reached `ready=True` with `indexed_row_count` ≈ the chunk count (render as `AskUserQuestion`).
 
