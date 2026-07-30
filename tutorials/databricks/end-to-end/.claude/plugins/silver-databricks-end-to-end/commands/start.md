@@ -1,5 +1,5 @@
 ---
-description: "Databricks Free Edition tutorial — the single entry point. Walks all 12 ordered stages (setup → lakebase → lakehouse → analytics) one at a time, and saves your progress to a human-readable PROGRESS.md so you can stop and resume in a new chat. $0, serverless, no cloud."
+description: "Databricks Free Edition tutorial — the single entry point. Walks all 13 ordered stages (setup → lakebase → lakehouse → analytics → retrieval) one at a time, and saves your progress to a human-readable PROGRESS.md so you can stop and resume in a new chat. $0, serverless, no cloud."
 ---
 
 # Databricks Free Edition — tutorial orchestrator
@@ -33,10 +33,10 @@ Ground rules (carry through every stage):
   - **You still do the plumbing** headless: auth, CLI, the `workspace import`, and any quick verification.
   - Make notebooks **idempotent** (`CREATE … IF NOT EXISTS`, etc.) so re-runs are safe.
   - **Keep the workspace ordered — every stage gets a folder.** Create `SilverAIWolf/NN-<name>/` for
-    *every* stage (zero-padded), so the tree always reads 01 → 12 with no gaps. Workload stages hold
+    *every* stage (zero-padded), so the tree always reads 01 → 13 with no gaps. Workload stages hold
     runnable notebooks; **CLI/plumbing stages still get a short `NN_overview` note** recording what was done
     + the captured values (so the learner who didn't run them in the UI still has a record, and the
-    numbering stays continuous). Maintain a top-level **`00_roadmap`** notebook (the 12-stage map + status +
+    numbering stays continuous). Maintain a top-level **`00_roadmap`** notebook (the 13-stage map + status +
     key names); update its status column as stages complete. Read the per-stage Notes for names/values.
   - **Number notebooks within a stage** `NN.1_…`, `NN.2_…` in the exact order the learner runs them, so a
     multi-notebook stage never leaves them guessing which is first (e.g. read `05.1_data_model`, then run
@@ -94,6 +94,20 @@ Ground rules (carry through every stage):
   - **Prefer the PowerShell tool for CLI calls** (Git Bash also works for POSIX-y bits like the path-resolve
     and `PROGRESS.md` heredoc). Each stage repeats the specific Windows substitution where it matters.
 - **Never auto-run the whole tutorial.** Advance only on the learner's explicit confirmation.
+- 🖱️ **Every gate and pause is an interactive `AskUserQuestion` — always.** Render the tool's
+  clickable prompt at every explain-then-start gate, every `**Pause.**`, and every continue/next
+  decision. **Never downgrade to a free-text question** — if the learner cancels the prompt, re-render
+  it (with adjusted options if the cancellation suggests the options missed the mark), don't fall back
+  to prose.
+- 🧾 **Never ask blind — every prompt must be self-contained.** After the learner clicks an option, they
+  must SEE what happened before being asked anything else. Two rules:
+  1. **Show the work first**: after running a section's commands, present the actual output and a
+     plain-language read of it (what ran, what came back, what it proves) as visible text *before* the
+     next prompt.
+  2. **The question restates the outcome**: the `AskUserQuestion` text itself carries a one-line recap of
+     what just ran and the key result (e.g. *"Ran create-branch → READY, 0 bytes, TTL 13:55Z. Continue to
+     Section 2 (add the report field)?"*) — so even if the learner only reads the popup, they know exactly
+     what happened and what they're agreeing to next. A bare "Continue?" is never acceptable.
 
 ## Step 1 — Resolve paths (run this first)
 
@@ -137,6 +151,7 @@ stamping the date with `date -u +%Y-%m-%dT%H:%M:%SZ`:
 | 10 | business-layer | Analytics | ☐ todo |
 | 11 | semantic | Analytics | ☐ todo |
 | 12 | ai-bi | Analytics | ☐ todo |
+| 13 | vector-search | Retrieval | ☐ todo |
 
 ## Notes
 <!-- Captured values + per-stage notes (warehouse id, Lakebase host, decisions). Append as you go. -->
@@ -168,9 +183,9 @@ picture before deciding what to do. Render it verbatim-ish:
 > Take the **structured** source through a governed **medallion** (bronze → silver → gold) — built **three ways**
 > (a **notebook** Job, **dbt**, and a declarative **SDP** pipeline) and proven identical with a 3-way parity check —
 > then expose it as a **semantic layer** +
-> **AI/BI dashboards** + a **Genie** space for natural-language Q&A. You also **land the unstructured**
-> documents in the volume — the foundation for a later **`agents`** phase that embeds them for **Vector
-> Search** (RAG) and joins those hits back to the structured tables.
+> **AI/BI dashboards** + a **Genie** space for natural-language Q&A. Then you activate the **unstructured**
+> documents: embed them for **Mosaic AI Vector Search** (semantic retrieval / RAG) and wrap the retriever as a
+> tool — the unstructured counterpart to Genie, the pair a future agent capstone would put to work.
 >
 > ## What you'll learn
 > - Authenticate the Databricks **CLI** (user OAuth) and wire a local **dbt / mise / uv** project on Free Edition.
@@ -180,7 +195,8 @@ picture before deciding what to do. Render it verbatim-ish:
 > - Refresh from a changed source and **verify lineage** (source → gold).
 > - Govern a **gold business layer**, define a **Metric View** (one governed definition every consumer shares),
 >   and serve it through **AI/BI + Genie**.
-> - Land **unstructured documents** in a volume — the groundwork for **Vector Search / RAG** in the agents phase.
+> - Build a **Mosaic AI Vector Search** index over the unstructured docs and retrieve four ways (SQL,
+>   SDK, inline RAG, and a reusable UC-function tool) — the retriever tool a future agent capstone would wield.
 >
 > ## Prerequisites
 > - A **Databricks Free Edition** account — free signup, no credit card, no cloud account (Stage 1 walks it).
@@ -189,7 +205,7 @@ picture before deciding what to do. Render it verbatim-ish:
 > - No prior Databricks/Spark experience needed. **You run each step on your own workspace and report back** —
 >   Claude authors and guides but can't run Free Edition for you.
 >
-> ## 12 stages, 4 phases
+> ## 13 stages, 5 phases
 > - **Setup** (1–3): `connect · landing-zone · project` — CLI/OAuth, a Unity Catalog landing zone, dbt/mise.
 > - **Lakebase** (4–6): `provision · seed · data-api` — stand up the OLTP, seed **structured + unstructured**
 >   data, expose a REST Data API.
@@ -197,13 +213,16 @@ picture before deciding what to do. Render it verbatim-ish:
 >   (notebook · dbt · SDP) with a 3-way parity check, then edit the source and refresh to watch the change reach gold.
 > - **Analytics** (10–12): `business-layer · semantic · ai-bi` — govern gold, a Metric View semantic layer,
 >   then AI/BI dashboards + a Genie space for NL Q&A.
+> - **Retrieval** (13): `vector-search` — activate the seeded contract PDFs + memos with a **Mosaic AI Vector
+>   Search** index (native `ai_parse_document` → auto-embed), then retrieve four ways ending in a reusable
+>   **UC-function retriever tool** — the unstructured counterpart to Genie.
 >
 > You run each step on your own Free Edition workspace and report back; progress is saved so you can stop
 > and resume anytime.
 
 ## Step 4 — Show where they are, then ask
 
-Print a compact progress line (e.g. `Setup ✅✅✅ · Lakebase ▶️☐☐ · Lakehouse ☐☐☐ · Analytics ☐☐☐ — 4/12 done`)
+Print a compact progress line (e.g. `Setup ✅✅✅ · Lakebase ▶️☐☐ · Lakehouse ☐☐☐ · Analytics ☐☐☐ · Retrieval ☐ — 4/13 done`)
 and the current stage. Then render an **`AskUserQuestion`**:
 
 - **Resume — Stage N (`<name>`)** → walk the current stage (Step 5). On a fresh start (nothing done) this
@@ -229,10 +248,13 @@ and the current stage. Then render an **`AskUserQuestion`**:
 2. Render an **`AskUserQuestion`**: **Continue to Stage N+1 (`<next>`)** / **Pause here**. On *Continue*,
    loop to Step 5 for the next stage. On *Pause*, tell them they can resume anytime with
    `/silver-databricks-end-to-end:start` — it will re-read `PROGRESS.md` and pick up at the current stage.
-3. After Stage 12 (`ai-bi`): mark it done and congratulate (source → medallion → governed analytics on $0).
-   Mention that `ml` and `agents` phases are planned for the future, but don't reference any author/build
-   docs — the learner-facing tutorial ends here. Also point them to **`/silver-databricks-end-to-end:cleanup`**,
-   which tears down every resource created and returns the workspace to its fresh $0 state whenever they're done.
+3. After Stage 13 (`vector-search`): mark it done and congratulate — source → medallion → governed
+   analytics → **semantic retrieval** over the unstructured contract docs (ending in a reusable UC-function
+   retriever tool), all on $0. Note that a RAG-focused `agents`/`ml` phase may follow — but don't reference any
+   author/build docs, the learner-facing tutorial ends here. Also point them to
+   **`/silver-databricks-end-to-end:cleanup`**, which tears down every resource created (the Lakebase
+   project takes any leftover branches with it) and returns the workspace to its fresh $0 state whenever
+   they're done.
 
 ## Notes
 - The Notes section of `PROGRESS.md` is the durable memory across chats — prefer reading a value from there

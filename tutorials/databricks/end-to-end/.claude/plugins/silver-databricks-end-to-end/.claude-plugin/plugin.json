@@ -1,7 +1,7 @@
 {
   "name": "silver-databricks-end-to-end",
-  "version": "1.0.0",
-  "description": "Databricks Free Edition — one $0, serverless-only, no-cloud tutorial walked as ordered stages: setup → lakebase (OLTP Postgres + Data API) → lakehouse (medallion 3 ways (notebook/dbt/SDP) + CDC) → analytics (Metric Views + AI/BI + Genie). Start with /silver-databricks-end-to-end:start.",
+  "version": "1.3.0",
+  "description": "Databricks Free Edition \u2014 one $0, serverless-only, no-cloud tutorial walked as 13 ordered stages: setup \u2192 lakebase (OLTP Postgres + Data API) \u2192 lakehouse (medallion 3 ways (notebook/dbt/SDP) + CDC) \u2192 analytics (Metric Views + AI/BI + Genie) \u2192 retrieval (Mosaic AI Vector Search over the contract docs). Start with /silver-databricks-end-to-end:start.",
   "author": {
     "name": "SilverAIWolf"
   }

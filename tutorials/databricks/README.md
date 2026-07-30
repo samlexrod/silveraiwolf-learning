@@ -12,7 +12,7 @@ Genie, `ai_query`/Model Serving, Mosaic AI agents, and more.
 
 | Tutorial | Plugin | What it covers |
 |---|---|---|
-| [`end-to-end/`](./end-to-end) | `silver-databricks-end-to-end` | The **broad, all-features tour** — 12 stages from Lakebase OLTP → medallion → governed semantic layer → AI/BI + Genie. **Start here.** |
+| [`end-to-end/`](./end-to-end) | `silver-databricks-end-to-end` | The **broad, all-features tour** — 13 stages from Lakebase OLTP → medallion → governed semantic layer → AI/BI + Genie → Vector Search retrieval. **Start here.** |
 
 ### Planned deep-dives (siblings of `end-to-end/`)
 

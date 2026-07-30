@@ -29,6 +29,8 @@ LAKEBASE_PROJECT="${LAKEBASE_PROJECT:-silverline-oltp}"
 SP_NAME="${SP_NAME:-silverline-data-api}"
 SECRET_SCOPE="${SECRET_SCOPE:-silverline}"
 PIPELINE_NAME="${PIPELINE_NAME:-silverline-medallion-sdp}"
+VS_ENDPOINT="${VS_ENDPOINT:-silverline-vs}"                     # Vector Search endpoint (Retrieval stage)
+VS_INDEX="${VS_INDEX:-${CATALOG}.silver.doc_chunks_idx}"        # delta-sync index on that endpoint
 JOB_NAMES=("silverline-dbt-job" "silverline-notebook-job")
 DASHBOARD_TITLE="${DASHBOARD_TITLE:-Silverline Capital — Portfolio (governed metrics)}"
 GENIE_TITLE="${GENIE_TITLE:-Silverline Capital — Portfolio Genie}"
@@ -66,6 +68,7 @@ About to tear down the tutorial from: ${DATABRICKS_HOST:-(profile $PROFILE)}
   • Identity    : service principal $SP_NAME · secret scope $SECRET_SCOPE
   • Compute     : pipeline $PIPELINE_NAME · jobs ${JOB_NAMES[*]}
   • Analytics   : dashboard "$DASHBOARD_TITLE" · Genie "$GENIE_TITLE"
+  • Retrieval   : Vector Search endpoint $VS_ENDPOINT + index $VS_INDEX
   • Notebooks   : $WORKSPACE_DIR
   KEEPS the shared Starter Warehouse. Does NOT touch your AWS account.
 EOF
@@ -76,40 +79,44 @@ if [ "$YES" != 1 ] && [ "$DRY" != 1 ]; then
   [ "$c" = "destroy" ] || { echo "aborted."; exit 1; }
 fi
 
-say "1/9 Workspace notebooks"
+say "1/10 Workspace notebooks"
 run "dbx workspace delete \"$WORKSPACE_DIR\" --recursive"
 
-say "2/9 AI/BI dashboard"
+say "2/10 AI/BI dashboard"
 for id in $(dbx lakeview list -o json 2>/dev/null | pick display_name "$DASHBOARD_TITLE" dashboard_id); do run "dbx lakeview trash \"$id\""; done
 
-say "3/9 Genie space"
+say "3/10 Genie space"
 for id in $(dbx genie list-spaces -o json 2>/dev/null | pick title "$GENIE_TITLE" space_id); do run "dbx genie trash-space \"$id\""; done
 
-say "4/9 Jobs"
+say "4/10 Jobs"
 for jn in "${JOB_NAMES[@]}"; do
   for id in $(dbx jobs list -o json 2>/dev/null | pick name "$jn" job_id); do run "dbx jobs delete \"$id\""; done
 done
 
-say "5/9 SDP pipeline"
+say "5/10 SDP pipeline"
 for id in $(dbx pipelines list-pipelines -o json 2>/dev/null | pick name "$PIPELINE_NAME" pipeline_id); do run "dbx pipelines delete \"$id\""; done
 
-say "6/9 UC catalogs (force-drops schemas/tables/views/volume/metric-view/functions)"
+say "6/10 Vector Search (Retrieval stage: index, then endpoint — before the catalog CASCADE)"
+run "dbx vector-search-indexes delete-index \"$VS_INDEX\""
+run "dbx vector-search-endpoints delete-endpoint \"$VS_ENDPOINT\""
+
+say "7/10 UC catalogs (force-drops schemas/tables/views/volume/metric-view/functions/doc_chunks/search_docs)"
 # The Lakebase-registered catalog is a CATALOG_MANAGED_POSTGRESQL (online) catalog — 'catalogs delete'
 # refuses it ("cannot be deleted"); remove it via the postgres catalogs API instead.
 run "dbx api delete \"/api/2.0/postgres/catalogs/$LAKEBASE_UC_CATALOG\""
 for c in "$CDF_CATALOG" "$CATALOG"; do run "dbx catalogs delete \"$c\" --force"; done
 
-say "7/9 Lakebase project (serverless Postgres — also drops the WAL slot + triggers)"
+say "8/10 Lakebase project (serverless Postgres — also drops the WAL slot + triggers)"
 run "dbx postgres delete-project \"$LAKEBASE_PROJECT\""
 # delete-project only SOFT-deletes (slug reserved ~7 days). The REST purge frees the slug NOW, so a
 # cleanup → re-provision cycle with the same name works immediately (no retention wait).
 run "dbx api delete \"/api/2.0/postgres/projects/$LAKEBASE_PROJECT?purge=true\""
 [ "$DRY" = 1 ] || echo "  ℹ️  purged — slug '$LAKEBASE_PROJECT' freed immediately (no retention wait)."
 
-say "8/9 Service principal"
+say "9/10 Service principal"
 for id in $(dbx service-principals list -o json 2>/dev/null | pick displayName "$SP_NAME" id); do run "dbx service-principals delete \"$id\""; done
 
-say "9/9 Secret scope"
+say "10/10 Secret scope"
 run "dbx secrets delete-scope \"$SECRET_SCOPE\""
 
 cat <<EOF
