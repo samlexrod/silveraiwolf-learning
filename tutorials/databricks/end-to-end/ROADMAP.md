@@ -7,7 +7,7 @@
 
 The **source-of-truth plan** for the Free Edition tutorial. `databricks/end-to-end` is **one tutorial**,
 installed once and walked as **ordered stages grouped into phases** (setup → lakebase → lakehouse →
-analytics → retrieval, with `agentic-reporting` and `ml` planned; more of the RAG `agents` ladder to follow). This file is the catalog (what phases/stages exist, what they
+analytics → retrieval (13–14), with `agentic-reporting` and `ml` planned; more of the RAG `agents` ladder to follow). This file is the catalog (what phases/stages exist, what they
 teach, build status), the **shared Free Edition facts**, and the **reuse map**. Read it before authoring any
 stage; update it when a stage lands.
 
@@ -85,7 +85,7 @@ declarative **SDP** pipeline (`08.3`) — and proves **3-way parity** (`08.5`). 
 
 ---
 
-## Phase + stage catalog (one plugin, 13 stages built across 5 phases; agentic-reporting + ml planned)
+## Phase + stage catalog (one plugin, **14 stages built across 5 phases**; agentic-reporting + ml planned)
 
 The plugin exposes **one command** — `/silver-databricks-end-to-end:start` (`commands/start.md`), the
 orchestrator. It walks the stages in order, reading each stage's content from `stages/NN-<name>.md`
@@ -100,13 +100,16 @@ author/reference catalog. Legend: ☐ to build · ◐ in progress · ✅ built.
 | **Lakehouse** (7–9) | `ingest` · `medallion` · `refresh` | register Lakebase in UC (native) → **bronze**, **medallion 3 ways (notebook/dbt/SDP) + parity**, then edit-source→re-run→verify (honest batch refresh, NOT CDC — real CDC is the streaming tutorial) | dbt models + SDP/notebook extraction + parity | ◐ authored — awaiting live verify (+ dbt silver/gold + medallion.py SDP + lakebase_simulate.py); verify native Lakebase UC-registration + SDP pipeline create |
 | **Analytics** (10–12) | `business-layer` · `semantic` · `ai-bi` | govern gold, **Metric Views** (semantic), **AI/BI + Genie** | expose_business_layer, invoice_metrics, genie_ask | ◐ authored — awaiting live verify (+ sql/invoice_metrics.sql); verify Metric View DDL + Genie create on FE |
 | **Retrieval** (13) | `vector-search` | **Mosaic AI Vector Search** over the seeded contract PDFs + credit memos: native `ai_parse_document` parse → chunked CDF Delta table → **delta-sync index auto-embedding via `databricks-bge-large-en`** → retrieve **four ways** (SQL `vector_search()` · SDK+filter · inline RAG `ai_query` · **UC-function retriever tool** `search_docs`) — the unstructured counterpart to Genie | `rag_retrieval.py` (ladder #1–#4) | ✅ built — **verified live end-to-end 2026-07-10** (95 real chunks; see [[fe-vector-search-verified]]). Gotchas baked in: endpoint `ONLINE` is lazy (first sync ~10–20 min); `num_results` must be constant (UC fn hardcodes it); TVF cols `chunk_id·doc_id·doc_type·source_path·content·search_score`. |
-| **Agentic reporting** (14, capstone) | `agentic-reporting` | **Lakebase copy-on-write branching** (0-byte, TTL'd), then an **Omnigent** agent that spins an ephemeral branch to prototype a new **gold report field** on prod-like data + tears it down — reasoning on **FE Foundation Model APIs**, governed by policy (cost budget + blast-radius) | new (Omnigent + Lakebase branching) | ◐ **PLANNED / deferred** — **deferred to a future PR; not in the 13-stage shipped release.** Verified in spike (**Gate A+B verified live**, 2026-07-01) — facts retained below to inform the future stage. Manual loop verified verbatim (incl. UI-visibility pause); agent loop proven end-to-end (claude-native, full PASS). **FE model finding:** ALL proprietary models (claude/gemini) disabled on FE (403 rate-limit-0 / 404) despite catalog listing → default = open-weight `databricks-gpt-oss-120b` (selectable). **Blocker:** Omnigent 0.3.0.dev0 GPT-harnesses ignore configured model (default to nonexistent gpt-5-5) + override crashes → FE-model path pending upstream fix; ship with claude-native fallback documented. |
+| **Retrieval** (14) | `pgvector` | **pgvector inside the Lakebase OLTP** — `CREATE EXTENSION vector` (**pgvector 0.8.0**) → `vector(1024)` column → embed the seeded contract docs via `databricks-bge-large-en` → `INSERT … ::vector` keyed by `contract_id` → **HNSW** index (`vector_cosine_ops`) → cosine `<=>` query. **Killer feature:** semantic retrieval **+ a transactional filter in one SQL** — join `doc_embeddings` to the live `contracts` table, `WHERE status IN ('delinquent','charged_off') ORDER BY embedding <=> q` (verified: scoped query returned only troubled contracts 54·49·36·42·80; unfiltered returned a mix) — something Mosaic AI VS can't do in one query (its structured filter lives elsewhere). Connects via `psycopg` (SDK-minted credential). | `rag_retrieval.py` + Lakebase seed/connection | ✅ built — **verified live 2026-07-30** ($0 on FE; see [[lakebase-pgvector-verified]]). Caveat: an idle `production` branch may read `ARCHIVED` but still connects (auto-resumes). Deliverable: notebook `14-pgvector/14.1_pgvector.py` + stage doc `14-pgvector.md`. |
+| **Agentic reporting** (15, capstone) | `agentic-reporting` | **Lakebase copy-on-write branching** (0-byte, TTL'd), then an **Omnigent** agent that spins an ephemeral branch to prototype a new **gold report field** on prod-like data + tears it down — reasoning on **FE Foundation Model APIs**, governed by policy (cost budget + blast-radius) | new (Omnigent + Lakebase branching) | ◐ **PLANNED / deferred** — **deferred to a future PR; not in the 14-stage shipped release.** Verified in spike (**Gate A+B verified live**, 2026-07-01) — facts retained below to inform the future stage. Manual loop verified verbatim (incl. UI-visibility pause); agent loop proven end-to-end (claude-native, full PASS). **FE model finding:** ALL proprietary models (claude/gemini) disabled on FE (403 rate-limit-0 / 404) despite catalog listing → default = open-weight `databricks-gpt-oss-120b` (selectable). **Blocker:** Omnigent 0.3.0.dev0 GPT-harnesses ignore configured model (default to nonexistent gpt-5-5) + override crashes → FE-model path pending upstream fix; ship with claude-native fallback documented. |
 | **ML** (planned) | — | **MLflow** tracking, feature engineering, train → register (UC) → **serve** a model | — (new) | ☐ |
-| **Agents** (partly built) | `vector-search` (13) done | Ladder **#1–#4 now built as Stage 13** (index + SQL/SDK/inline-RAG/UC-tool). Still planned: **#5–#8** — Mosaic-AI `ResponsesAgent` → MLflow → UC → serving, agent+Genie multi-tool, `mlflow.evaluate`, review app → handoff to `silver-databricks-agents`. (Lakebase **pgvector** dual-backend + a Databricks **App** are candidate stages to insert into the Retrieval phase before the capstone — pgvector needs an FE `CREATE EXTENSION vector` spike first.) | `rag_retrieval.py` + genie tool | ◐ |
+| **Agents** (partly built) | `vector-search` (13) + `pgvector` (14) done | Ladder **#1–#4 now built as Stage 13** (index + SQL/SDK/inline-RAG/UC-tool); the Lakebase **pgvector** dual-backend landed as **Stage 14** (`CREATE EXTENSION vector` spike done — pgvector 0.8.0 on FE). Still planned: **#5–#8** — Mosaic-AI `ResponsesAgent` → MLflow → UC → serving, agent+Genie multi-tool, `mlflow.evaluate`, review app → handoff to `silver-databricks-agents`. (A Databricks **App** chat UI remains a candidate stage to insert into the Retrieval phase before the capstone.) | `rag_retrieval.py` + genie tool | ◐ |
 
-**Dependency:** Setup → Lakebase → Lakehouse → Analytics → **Retrieval** ( → **Agentic reporting** planned |
+**Dependency:** Setup → Lakebase → Lakehouse → Analytics → **Retrieval** (13–14) ( → **Agentic reporting** planned |
 ML planned). Lakehouse assumes Lakebase (the source); Analytics/ML assume the Lakehouse gold/silver exists.
-**Retrieval** (13) only needs the `seed`-stage docs in the volume (`silverline.bronze.files`) + the warehouse.
+**Retrieval** (13, `vector-search`) only needs the `seed`-stage docs in the volume (`silverline.bronze.files`) +
+the warehouse; **Retrieval** (14, `pgvector`) needs the seeded docs **and** the live Lakebase OLTP tables
+(`provision`/`seed`) for the transactional-filter join.
 **Agentic reporting** (planned/deferred, not in the shipped release) branches the Lakebase OLTP, so it needs
 `provision`/`seed`; it's slated as the capstone — the agent can wield the Stage-13 retriever (`search_docs`)
 alongside Genie.
@@ -156,14 +159,15 @@ alongside Genie.
    add it to `commands/start.md` + this catalog → learner live-runs → flip status to ✅ here.
 
 ## Recap
-- ✓ One staged tutorial (one plugin): 13 stages shipped across 5 phases (Setup · Lakebase · Lakehouse · Analytics · Retrieval); Agentic reporting + ML planned (deferred to a future PR); more of the RAG-agents ladder to follow
+- ✓ One staged tutorial (one plugin): **14 stages shipped across 5 phases** (Setup · Lakebase · Lakehouse · Analytics · Retrieval (13–14)); Agentic reporting + ML planned (deferred to a future PR); more of the RAG-agents ladder to follow
 - ✓ Captured the shared Free Edition facts (incl. the Lakebase-docs-are-stale finding) + the build/verify model
 - ✓ Kept the RAG-consumption ladder for the planned `agents` phase + the agents-plugin handoff
 - ✓ Touched no cloud resources
 
-Live-verified so far: **Retrieval** (13, `vector-search`, end-to-end 2026-07-10) — shipped. **Agentic reporting**
-(14, Gate A+B) was verified live in a spike but is **NOT shipped in this release — deferred to a future PR**.
-Next candidates: promote the deferred **Agentic reporting** capstone, the **pgvector-on-FE** spike (gates a
-dual-backend retrieval stage), and the **Omnigent→MLflow** trace bridge (agent observability).
+Live-verified so far: **Retrieval** (13, `vector-search`, end-to-end 2026-07-10) and **Retrieval** (14,
+`pgvector`, live 2026-07-30) — both shipped. **Agentic reporting** (Gate A+B) was verified live in a spike but
+is **NOT shipped in this release — deferred to a future PR**. Next candidates: promote the deferred **Agentic
+reporting** capstone, a Databricks **App** chat UI over the retrievers, and the **Omnigent→MLflow** trace
+bridge (agent observability).
 
 > **Offer to continue (interactive).** Render an `AskUserQuestion` — **"Begin Stage 1 now, or keep exploring the roadmap?"** — choosing **Begin Stage 1** invokes `connect`; **Keep exploring** stays here and runs nothing. Only chain forward on **Begin Stage 1**.

@@ -1,14 +1,14 @@
 ---
 name: install-tutorial
-description: "[Start here] Install the Databricks Free Edition end-to-end tutorial as a Claude Code plugin — one install, then 13 ordered stages. Claude performs the install via the `claude plugin` CLI. Trigger on 'install tutorial', 'set up the databricks tutorial', 'start the databricks free edition tutorial', 'how do I install this', '/install-tutorial', or any request to install or begin the Databricks Free Edition tutorial."
+description: "[Start here] Install the Databricks Free Edition end-to-end tutorial as a Claude Code plugin — one install, then 14 ordered stages. Claude performs the install via the `claude plugin` CLI. Trigger on 'install tutorial', 'set up the databricks tutorial', 'start the databricks free edition tutorial', 'how do I install this', '/install-tutorial', or any request to install or begin the Databricks Free Edition tutorial."
 ---
 
 # Install the Databricks End-to-End Tutorial (Free Edition)
 
 This repo ships its tutorials as **Claude Code plugins**, listed in the repo-level **`silveraiwolf`**
 marketplace (`.claude-plugin/marketplace.json`). The first tutorial is **Databricks end-to-end** (Free
-Edition) at `tutorials/databricks/end-to-end/.claude/`. Install it once, then walk **13 ordered stages**
-(setup → lakebase → lakehouse → analytics → retrieval).
+Edition) at `tutorials/databricks/end-to-end/.claude/`. Install it once, then walk **14 ordered stages**
+(setup → lakebase → lakehouse → analytics → retrieval — retrieval now covers Vector Search + pgvector).
 
 > ✅ **Claude can install this for you.** The interactive `/plugin …` slash commands can't be driven by
 > Claude, but the **`claude plugin …` CLI can** (run via Bash). So this skill *performs* the install.
@@ -72,9 +72,9 @@ Use **one source, not both** (same marketplace name `silveraiwolf` → collision
    in the current session, but a newly installed plugin's *commands* generally do **not** surface until a
    full restart — so if `/silver-databricks-end-to-end:start` reports **"Unknown command"** right after
    install, that's expected; restart and try again (the command is already in `~/.claude/plugins/cache/`).
-2. Run **`/silver-databricks-end-to-end:start`** — the Stage 0 roadmap listing all 13 stages.
+2. Run **`/silver-databricks-end-to-end:start`** — the Stage 0 roadmap listing all 14 stages.
 3. Walk the stages in order: `connect → landing-zone → project → provision → seed → data-api → ingest →
-   medallion → refresh → business-layer → semantic → ai-bi → vector-search`. Each names its
+   medallion → refresh → business-layer → semantic → ai-bi → vector-search → pgvector`. Each names its
    precondition + "Next:".
 4. Each stage is interactive: Claude runs the CLI/plumbing; the learner runs the notebooks in their own Free
    Edition workspace and reports results.

@@ -1,0 +1,188 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # Stage 14 · 14.1 — pgvector retrieval in Lakebase
+# MAGIC
+# MAGIC Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage builds the
+# MAGIC **other** kind — a **self-managed** vector store **co-located with your operational Postgres**, using
+# MAGIC **pgvector** inside the `silverline-oltp` Lakebase. Same contract corpus, a second backend.
+# MAGIC
+# MAGIC Why bother with a second store? Because the embeddings now live **right next to the transactional rows**
+# MAGIC (`contracts`, `customers`, …). That unlocks the payoff in Section 5: **semantic retrieval *and* a
+# MAGIC transactional filter in a single SQL query** — "find the delinquent contracts that are about earth-moving
+# MAGIC equipment" — no separate serving endpoint, no data movement.
+# MAGIC
+# MAGIC > 🧭 **Delta-sync (Stage 13) vs pgvector (here).** There the index embedded + synced *for* you off a Delta
+# MAGIC > table. Here **you** embed the docs and `INSERT` the vectors yourself — the trade is more control and a
+# MAGIC > join to live OLTP data, in exchange for owning the embed + refresh.
+# MAGIC >
+# MAGIC > 🗄️ **Precondition:** the `vector-search` stage's `silverline.silver.doc_chunks` table (the parsed contract
+# MAGIC > text) — we read the documents from it. If it's missing, run `13-vector-search/13.1_build_index` Section 2
+# MAGIC > first. (We only *read* the text here; embeddings + storage are all pgvector.)
+
+# COMMAND ----------
+
+# MAGIC %pip install "psycopg[binary]" "databricks-sdk>=0.61.0" -q
+# MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1 — Connect to Lakebase and enable pgvector
+# MAGIC We mint a short-lived credential via the SDK (no token to paste), connect over SSL to the OLTP Postgres,
+# MAGIC and turn on the extension. `CREATE EXTENSION vector` is the gate — everything below rides on it.
+
+# COMMAND ----------
+
+import psycopg
+from databricks.sdk import WorkspaceClient
+
+ENDPOINT = "projects/silverline-oltp/branches/production/endpoints/primary"  # Autoscaling project (PG17)
+w = WorkspaceClient()
+HOST  = w.postgres.get_endpoint(ENDPOINT).status.hosts.host
+USER  = w.current_user.me().user_name
+TOKEN = w.postgres.generate_database_credential(ENDPOINT).token
+
+# One autocommit connection reused across the cells below.
+conn = psycopg.connect(host=HOST, port=5432, dbname="databricks_postgres", user=USER,
+                       password=TOKEN, sslmode="require", autocommit=True)
+cur = conn.cursor()
+
+cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+cur.execute("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
+print(f"connected to {HOST} as {USER}  ·  pgvector {cur.fetchone()[0]}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2 — Embed the contract docs yourself, store them next to the OLTP data
+# MAGIC No managed embedding here — **you** call the model. We read the parsed contract text from `doc_chunks`,
+# MAGIC embed each doc with `databricks-bge-large-en` (1024-dim), and `INSERT` the vectors into a `vector(1024)`
+# MAGIC column **keyed by `contract_id`** — so every embedding lines up with a real row in the `contracts` table.
+# MAGIC That key is what makes Section 5's join possible.
+
+# COMMAND ----------
+
+import re
+
+# Read the parsed contract documents from the Stage-13 table (Spark), derive the numeric contract_id.
+rows = (spark.table("silverline.silver.doc_chunks")
+        .filter("doc_type = 'contract'")
+        .select("doc_id", "content").collect())
+docs = [(int(re.search(r"contract_(\d+)", r["doc_id"]).group(1)), r["doc_id"], r["content"]) for r in rows]
+print(f"{len(docs)} contract docs to embed")
+
+def embed(texts):
+    """Embed a list of texts with the Free-Edition bge-large-en endpoint (batched)."""
+    out = []
+    for i in range(0, len(texts), 20):
+        out += [d.embedding for d in w.serving_endpoints.query(name="databricks-bge-large-en",
+                                                               input=texts[i:i+20]).data]
+    return out
+
+vectors = embed([content for _, _, content in docs])
+print(f"embedded {len(vectors)} docs · dim {len(vectors[0])}")
+
+# COMMAND ----------
+
+# Store them in pgvector. The embedding is passed as a '[f1,f2,…]' string literal cast to ::vector
+# (no extra adapter needed). Idempotent: rebuild the table each run.
+cur.execute("DROP TABLE IF EXISTS doc_embeddings")
+cur.execute("""
+    CREATE TABLE doc_embeddings (
+        contract_id int  PRIMARY KEY,
+        doc_id      text,
+        content     text,
+        embedding   vector(1024)
+    )
+""")
+with conn.cursor() as w_cur:
+    for (cid, did, content), vec in zip(docs, vectors):
+        w_cur.execute(
+            "INSERT INTO doc_embeddings (contract_id, doc_id, content, embedding) VALUES (%s, %s, %s, %s::vector)",
+            (cid, did, content, "[" + ",".join(map(str, vec)) + "]"))
+cur.execute("SELECT count(*) FROM doc_embeddings")
+print(f"stored {cur.fetchone()[0]} rows in doc_embeddings")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3 — Index for fast nearest-neighbor search (HNSW)
+# MAGIC Without an index, a query scans every row (fine for 85 docs; not for millions). **HNSW** is pgvector's
+# MAGIC approximate-nearest-neighbor index — `vector_cosine_ops` matches the `<=>` (cosine distance) operator we
+# MAGIC query with.
+
+# COMMAND ----------
+
+cur.execute("CREATE INDEX IF NOT EXISTS doc_embeddings_hnsw ON doc_embeddings "
+            "USING hnsw (embedding vector_cosine_ops)")
+print("HNSW cosine index ready")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4 — Retrieve by meaning (cosine `<=>`)
+# MAGIC Embed the question the same way, then order by cosine distance. `1 - (embedding <=> q)` is the cosine
+# MAGIC **similarity** (higher = closer). This is the pgvector equivalent of Stage 13's `vector_search()`.
+
+# COMMAND ----------
+
+import pandas as pd
+
+def search(query_text, extra_sql="", params=()):
+    qv = "[" + ",".join(map(str, embed([query_text])[0])) + "]"
+    cur.execute(f"""
+        SELECT c.contract_id, c.status,
+               round((1 - (e.embedding <=> %s::vector))::numeric, 4) AS cosine_sim,
+               left(e.content, 60) AS preview
+        FROM doc_embeddings e
+        JOIN contracts c USING (contract_id)
+        {extra_sql}
+        ORDER BY e.embedding <=> %s::vector
+        LIMIT 5
+    """, (qv, *params, qv))
+    return pd.DataFrame(cur.fetchall(), columns=[d[0] for d in cur.description])
+
+display(search("financing for heavy earth-moving machinery"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5 — The payoff: semantic retrieval **+ a transactional filter**, in one SQL
+# MAGIC The embeddings live *inside* the OLTP database, so a single query can do **both** jobs at once: rank by
+# MAGIC meaning **and** filter on live transactional columns. Ask *"which of our **delinquent / charged-off**
+# MAGIC contracts are about earth-moving equipment?"* — the `JOIN contracts … WHERE status IN (…)` runs right
+# MAGIC beside the `<=>` similarity. Mosaic AI Vector Search can't do this in one query — the structured filter
+# MAGIC lives in a different system.
+
+# COMMAND ----------
+
+# Scoped: only genuinely troubled contracts, ranked by semantic relevance.
+display(search("financing for heavy earth-moving machinery",
+               extra_sql="WHERE c.status IN (%s, %s)", params=("delinquent", "charged_off")))
+
+# COMMAND ----------
+
+# Contrast — the same semantic query with NO status filter returns a mix of active/paid_off/delinquent.
+display(search("financing for heavy earth-moving machinery"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6 — Which retriever, when?
+# MAGIC | | **Mosaic AI Vector Search** (Stage 13) | **pgvector in Lakebase** (this stage) |
+# MAGIC |---|---|---|
+# MAGIC | Where it lives | the lakehouse (Unity Catalog) | inside the **operational Postgres** |
+# MAGIC | Embeddings | **managed** — the index embeds for you | **you** embed + `INSERT` the vectors |
+# MAGIC | Staying current | auto (delta-sync + CDF) | you re-embed / upsert on change |
+# MAGIC | Killer move | governed, joins to **gold**/Genie; scales to huge corpora | **retrieval + live OLTP filter in one SQL**, no data movement |
+# MAGIC | Reach for it when | lakehouse-governed RAG, big document sets | retrieval next to the app's transactional data |
+# MAGIC
+# MAGIC Same embedding model, same corpus — two backends for two shapes of problem. An agent could hold **both**.
+# MAGIC
+# MAGIC > 🧹 The `doc_embeddings` table lives on the Lakebase `production` branch; the tutorial's `cleanup` drops it
+# MAGIC > with the Lakebase project. Nothing here costs money — quota only.
+
+# COMMAND ----------
+
+conn.close()
+print("done — connection closed")
