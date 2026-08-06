@@ -19,8 +19,11 @@ super-power.
 
 The reason for a second store: the embeddings now sit **right next to the transactional rows** (`contracts`,
 `customers`, …). That unlocks the payoff — **semantic retrieval *and* a transactional filter in one SQL
-query** (*"the **delinquent** contracts that are about earth-moving equipment"*) — with no separate serving
-endpoint and no data movement.
+query** (*"the **delinquent** contracts that are about earth-moving equipment"*) — the vector search and the
+structured filter run in **one engine, against live rows**, instead of hitting a separate vector service and
+joining its hits back to your structured data. The win is at **query time** — the trade (Section 2) is that
+**you** get the embeddings *into* Postgres and keep them fresh (a Delta→Lakebase refresh you own), where
+Stage 13's delta-sync managed that for you.
 
 > 🧠 **pgvector** is a Postgres extension that adds a `vector` column type and nearest-neighbor operators
 > (`<=>` cosine, `<->` L2). Verified live on Free Edition Lakebase: **pgvector 0.8.0**, `vector(1024)` columns,

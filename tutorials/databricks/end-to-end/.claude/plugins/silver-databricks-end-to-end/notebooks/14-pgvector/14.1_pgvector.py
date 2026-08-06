@@ -9,7 +9,12 @@
 # MAGIC Why bother with a second store? Because the embeddings now live **right next to the transactional rows**
 # MAGIC (`contracts`, `customers`, …). That unlocks the payoff in Section 5: **semantic retrieval *and* a
 # MAGIC transactional filter in a single SQL query** — "find the delinquent contracts that are about earth-moving
-# MAGIC equipment" — no separate serving endpoint, no data movement.
+# MAGIC equipment" — the vector search and the structured filter run in **one engine, against live rows**, instead
+# MAGIC of hitting a separate vector service and joining its hits back to your structured data.
+# MAGIC
+# MAGIC The trade is real, though (Section 2): **you** get the embeddings *into* Postgres and keep them fresh — a
+# MAGIC **Delta→Lakebase refresh you own** (the same way operational data already syncs between the two stores),
+# MAGIC where Stage 13's delta-sync handled that for you. The win is at **query time**, not zero setup.
 # MAGIC
 # MAGIC > 🧭 **Delta-sync (Stage 13) vs pgvector (here).** There the index embedded + synced *for* you off a Delta
 # MAGIC > table. Here **you** embed the docs and `INSERT` the vectors yourself — the trade is more control and a
@@ -174,7 +179,8 @@ display(search("financing for heavy earth-moving machinery"))
 # MAGIC | Where it lives | the lakehouse (Unity Catalog) | inside the **operational Postgres** |
 # MAGIC | Embeddings | **managed** — the index embeds for you | **you** embed + `INSERT` the vectors |
 # MAGIC | Staying current | auto (delta-sync + CDF) | you re-embed / upsert on change |
-# MAGIC | Killer move | governed, joins to **gold**/Genie; scales to huge corpora | **retrieval + live OLTP filter in one SQL**, no data movement |
+# MAGIC | Killer move | governed, joins to **gold**/Genie; scales to huge corpora | **retrieval + live OLTP filter in one SQL** (query-time, one engine) |
+# MAGIC | You own | little — managed embed + sync | getting embeddings *in* + keeping them fresh (Delta→Lakebase refresh) |
 # MAGIC | Reach for it when | lakehouse-governed RAG, big document sets | retrieval next to the app's transactional data |
 # MAGIC
 # MAGIC Same embedding model, same corpus — two backends for two shapes of problem. An agent could hold **both**.
