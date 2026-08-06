@@ -7,23 +7,23 @@
 
 # pgvector in Lakebase — the retriever that lives *inside* your database
 
-Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage builds the
-**other kind**: a **self-managed** vector store **co-located with your operational Postgres**, using
-**pgvector** inside the `silverline-oltp` Lakebase. Same contract corpus, a second backend — and a different
-super-power.
+Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage shows the
+**lighter-weight alternative** — **pgvector** inside the `silverline-oltp` Lakebase Postgres you already run.
+It's the **cheaper option for small-to-medium corpora**: when the document set doesn't justify a dedicated
+vector-search service, keep the embeddings in the same Postgres as your transactional rows. Same contract
+corpus, no separate store to operate.
 
-| Retriever | Modality | Where it lives |
+| Retriever | Best for | Where it lives |
 |---|---|---|
-| **Mosaic AI Vector Search** ✅ (`vector-search` stage) | contract docs | the **lakehouse** (Unity Catalog) |
-| **pgvector** ← this stage | contract docs | inside the **operational Postgres** (Lakebase OLTP) |
+| **Mosaic AI Vector Search** ✅ (`vector-search` stage) | large corpora · governed lakehouse RAG · scale | the **lakehouse** (Unity Catalog) |
+| **pgvector** ← this stage | **small-to-medium** data · cheaper · retrieval next to app data | inside the **operational Postgres** (Lakebase OLTP) |
 
-The reason for a second store: the embeddings now sit **right next to the transactional rows** (`contracts`,
-`customers`, …). That unlocks the payoff — **semantic retrieval *and* a transactional filter in one SQL
-query** (*"the **delinquent** contracts that are about earth-moving equipment"*) — the vector search and the
-structured filter run in **one engine, against live rows**, instead of hitting a separate vector service and
-joining its hits back to your structured data. The win is at **query time** — the trade (Section 2) is that
-**you** get the embeddings *into* Postgres and keep them fresh (a Delta→Lakebase refresh you own), where
-Stage 13's delta-sync managed that for you.
+Because the embeddings sit **right next to the transactional rows** (`contracts`, `customers`, …), one query
+does what the managed service can't in a single shot: **semantic retrieval *and* a transactional filter**
+(*"the **delinquent** contracts that are about earth-moving equipment"*) — vector search and structured filter
+in **one engine, against live rows**. The win is at **query time**; the trade (Section 2) is that **you** own
+the embed + keeping the vectors fresh (a Delta→Lakebase refresh). And know the ceiling: at **large scale or
+governed lakehouse RAG, the managed Vector Search wins** — pgvector is for the small-to-medium case.
 
 > 🧠 **pgvector** is a Postgres extension that adds a `vector` column type and nearest-neighbor operators
 > (`<=>` cosine, `<->` L2). Verified live on Free Edition Lakebase: **pgvector 0.8.0**, `vector(1024)` columns,
@@ -152,10 +152,12 @@ unfiltered result (render as `AskUserQuestion`).
 | Matches | exact words | **meaning**, lakehouse-governed | **meaning**, in Postgres |
 | Embeddings | — | managed (delta-sync) | **you** embed + upsert |
 | Killer move | — | joins to gold/Genie; huge corpora | **retrieval + live OLTP filter in one SQL** |
+| Reach for it when | — | **large** corpora · governed RAG · scale | **small-to-medium** · cheaper (no separate service) · next to app data |
 
-You've now given the platform a **second** retriever — one that reasons over the *same* documents but sits
-where your operational data lives, so retrieval and transactional filters happen together. Managed
-(lakehouse) or self-managed (OLTP): two backends for two shapes of problem, and an agent could hold both.
+pgvector isn't a bigger hammer — it's the **lighter, cheaper one** for the small-to-medium case, where standing
+up a managed vector service is overkill and you'd rather keep vectors in the Postgres you already run. Pick by
+scale: managed Vector Search when you need governance + scale, pgvector when the corpus is modest and
+co-location with the OLTP data pays off. (An agent could hold either as its retriever tool.)
 
 **Pause.** Confirm you can explain when pgvector-in-Lakebase beats a managed lakehouse index (the co-located
 OLTP join), and vice-versa (render as `AskUserQuestion`).
@@ -169,7 +171,7 @@ OLTP join), and vice-versa (render as `AskUserQuestion`).
 - ✓ Built an **HNSW** cosine index for approximate nearest-neighbor search
 - ✓ Retrieved by meaning with `<=>`, then — the payoff — **semantic retrieval + a transactional filter in one
   SQL** by joining to the live `contracts` table
-- ✓ The unstructured retriever that lives *inside* the operational database — the co-located counterpart to
-  Stage 13's lakehouse-native Vector Search
+- ✓ A **cheaper, small-to-medium** retriever that lives *inside* the operational database — the co-located
+  alternative to Stage 13's managed lakehouse Vector Search (pick by scale)
 
 **Cost now:** quota only — the `doc_embeddings` table is dropped with the Lakebase project at cleanup.

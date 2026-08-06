@@ -2,19 +2,21 @@
 # MAGIC %md
 # MAGIC # Stage 14 · 14.1 — pgvector retrieval in Lakebase
 # MAGIC
-# MAGIC Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage builds the
-# MAGIC **other** kind — a **self-managed** vector store **co-located with your operational Postgres**, using
-# MAGIC **pgvector** inside the `silverline-oltp` Lakebase. Same contract corpus, a second backend.
+# MAGIC Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage shows the
+# MAGIC **lighter-weight alternative** — **pgvector** inside the `silverline-oltp` Lakebase Postgres you already
+# MAGIC run — same contract corpus, no separate vector-search service to stand up or pay for.
 # MAGIC
-# MAGIC Why bother with a second store? Because the embeddings now live **right next to the transactional rows**
-# MAGIC (`contracts`, `customers`, …). That unlocks the payoff in Section 5: **semantic retrieval *and* a
-# MAGIC transactional filter in a single SQL query** — "find the delinquent contracts that are about earth-moving
-# MAGIC equipment" — the vector search and the structured filter run in **one engine, against live rows**, instead
-# MAGIC of hitting a separate vector service and joining its hits back to your structured data.
+# MAGIC **When is it the right call? Small-to-medium corpora.** When the document set doesn't justify a dedicated
+# MAGIC vector service, just keep the embeddings **in the same Postgres as your transactional rows** (`contracts`,
+# MAGIC `customers`, …) — cheaper and simpler to operate. And because they're co-located, one query does what the
+# MAGIC managed service can't in a single shot: **semantic retrieval *and* a transactional filter** (Section 5) —
+# MAGIC *"find the **delinquent** contracts that are about earth-moving equipment"* — vector search and structured
+# MAGIC filter in **one engine, against live rows**, no fan-out to a separate store and back.
 # MAGIC
-# MAGIC The trade is real, though (Section 2): **you** get the embeddings *into* Postgres and keep them fresh — a
-# MAGIC **Delta→Lakebase refresh you own** (the same way operational data already syncs between the two stores),
-# MAGIC where Stage 13's delta-sync handled that for you. The win is at **query time**, not zero setup.
+# MAGIC **The ceiling (be honest):** at large scale, big document sets, or governed lakehouse RAG, the managed
+# MAGIC Vector Search (Stage 13) is the better fit. pgvector shines when the data is **small-to-medium** and you'd
+# MAGIC rather not run a second system — and you do own the embed + keeping the vectors fresh (a Delta→Lakebase
+# MAGIC refresh), where Stage 13's delta-sync handled that for you.
 # MAGIC
 # MAGIC > 🧭 **Delta-sync (Stage 13) vs pgvector (here).** There the index embedded + synced *for* you off a Delta
 # MAGIC > table. Here **you** embed the docs and `INSERT` the vectors yourself — the trade is more control and a
@@ -181,9 +183,10 @@ display(search("financing for heavy earth-moving machinery"))
 # MAGIC | Staying current | auto (delta-sync + CDF) | you re-embed / upsert on change |
 # MAGIC | Killer move | governed, joins to **gold**/Genie; scales to huge corpora | **retrieval + live OLTP filter in one SQL** (query-time, one engine) |
 # MAGIC | You own | little — managed embed + sync | getting embeddings *in* + keeping them fresh (Delta→Lakebase refresh) |
-# MAGIC | Reach for it when | lakehouse-governed RAG, big document sets | retrieval next to the app's transactional data |
+# MAGIC | Reach for it when | **large** corpora · governed lakehouse RAG · scale | **small-to-medium** data · no separate service (cheaper) · retrieval next to app data |
 # MAGIC
-# MAGIC Same embedding model, same corpus — two backends for two shapes of problem. An agent could hold **both**.
+# MAGIC Same embedding model, same corpus — **two options for two scales**: the managed service when you need
+# MAGIC governance + scale, pgvector when the data is small-to-medium and you'd rather not run a second system.
 # MAGIC
 # MAGIC > 🧹 The `doc_embeddings` table lives on the Lakebase `production` branch; the tutorial's `cleanup` drops it
 # MAGIC > with the Lakebase project. Nothing here costs money — quota only.
