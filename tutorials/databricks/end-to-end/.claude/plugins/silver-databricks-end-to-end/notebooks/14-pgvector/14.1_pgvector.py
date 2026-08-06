@@ -52,9 +52,12 @@ HOST  = w.postgres.get_endpoint(ENDPOINT).status.hosts.host
 USER  = w.current_user.me().user_name
 TOKEN = w.postgres.generate_database_credential(ENDPOINT).token
 
-# Connect with pg8000 — a **pure-Python** Postgres driver. (The psycopg `[binary]` / psycopg2-binary wheels
-# ship their own libpq, which SIGABRTs nondeterministically while loading on the serverless runtime; pg8000
-# has no native code, so it can't.) Lakebase requires SSL — an encrypt-only context matches `sslmode=require`.
+# Connect with pg8000 — a **pure-Python** Postgres driver.
+# Driver note: Databricks' docs recommend psycopg (`psycopg[binary]`). We tested it here and it **SIGABRTs
+# (exit 134 → "the Python kernel is unresponsive") on this Free-Edition serverless runtime** — it survives a
+# bare connect but crashes the *full* notebook, where its bundled libpq/OpenSSL aborts alongside the
+# pandas/pyarrow/grpc native libs Spark loads. pg8000 has no native code, so it can't — it runs the whole
+# workload green. Lakebase requires SSL; an encrypt-only context matches `sslmode=require`.
 ssl_ctx = ssl.create_default_context()
 ssl_ctx.check_hostname = False
 ssl_ctx.verify_mode = ssl.CERT_NONE
