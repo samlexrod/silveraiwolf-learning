@@ -111,9 +111,11 @@ function is the retriever tool a future agent can wield alongside Genie.
 pgvector works on FE Lakebase: `CREATE EXTENSION vector` (0.8.0), `vector(1024)`, HNSW (`vector_cosine_ops`),
 cosine `<=>`. Embed the seeded docs with `databricks-bge-large-en`, `INSERT … ::vector` keyed by `contract_id`,
 then the payoff — semantic retrieval **+ a transactional filter** in one SQL by joining `doc_embeddings` to the
-live `contracts` table (`WHERE status IN (…) ORDER BY embedding <=> q`). Connects via `psycopg` +
-`w.postgres.get_endpoint`/`generate_database_credential` (same as `05.2`). Caveat: an idle `production` branch
-may read `ARCHIVED` but still connects (auto-resume). Deliverable: notebook `14.1_pgvector`.
+live `contracts` table (`WHERE status IN (…) ORDER BY embedding <=> q`). **Connect with `pg8000` (pure Python),
+NOT `psycopg[binary]`** — the bundled-libpq wheels SIGABRT nondeterministically on the serverless ARM runtime
+(kernel "unresponsive"); and **force `-U databricks-sdk>=0.104.0`** because `w.postgres` is absent on older
+pre-installed SDKs. Caveat: an idle `production` branch may read `ARCHIVED` but still connects (auto-resume).
+Deliverable: notebook `14.1_pgvector`. (See [[lakebase-pgvector-verified]] + [[lakebase-notebook-query-pattern]].)
 
 **Agentic reporting — a planned future capstone (not in this 13-stage release).** A later tutorial/PR will add
 an agentic-reporting phase (Lakebase copy-on-write branching + an Omnigent agent driving the loop); it is
