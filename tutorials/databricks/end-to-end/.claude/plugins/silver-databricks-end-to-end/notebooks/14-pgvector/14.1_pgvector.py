@@ -28,7 +28,9 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install "psycopg[binary]" "databricks-sdk>=0.61.0" -q
+# MAGIC # -U forces the newest databricks-sdk: the autoscaling-Postgres API (`w.postgres`) isn't in older
+# MAGIC # pre-installed runtime versions, and a bare `>=` floor lets the run keep a stale one.
+# MAGIC %pip install -U pg8000 "databricks-sdk>=0.104.0" -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -40,7 +42,8 @@
 
 # COMMAND ----------
 
-import psycopg
+import ssl
+import pg8000.dbapi
 from databricks.sdk import WorkspaceClient
 
 ENDPOINT = "projects/silverline-oltp/branches/production/endpoints/primary"  # Autoscaling project (PG17)
@@ -49,9 +52,15 @@ HOST  = w.postgres.get_endpoint(ENDPOINT).status.hosts.host
 USER  = w.current_user.me().user_name
 TOKEN = w.postgres.generate_database_credential(ENDPOINT).token
 
-# One autocommit connection reused across the cells below.
-conn = psycopg.connect(host=HOST, port=5432, dbname="databricks_postgres", user=USER,
-                       password=TOKEN, sslmode="require", autocommit=True)
+# Connect with pg8000 — a **pure-Python** Postgres driver. (The psycopg `[binary]` / psycopg2-binary wheels
+# ship their own libpq, which SIGABRTs nondeterministically while loading on the serverless runtime; pg8000
+# has no native code, so it can't.) Lakebase requires SSL — an encrypt-only context matches `sslmode=require`.
+ssl_ctx = ssl.create_default_context()
+ssl_ctx.check_hostname = False
+ssl_ctx.verify_mode = ssl.CERT_NONE
+conn = pg8000.dbapi.connect(host=HOST, port=5432, database="databricks_postgres", user=USER,
+                            password=TOKEN, ssl_context=ssl_ctx)
+conn.autocommit = True
 cur = conn.cursor()
 
 cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
@@ -102,11 +111,10 @@ cur.execute("""
         embedding   vector(1024)
     )
 """)
-with conn.cursor() as w_cur:
-    for (cid, did, content), vec in zip(docs, vectors):
-        w_cur.execute(
-            "INSERT INTO doc_embeddings (contract_id, doc_id, content, embedding) VALUES (%s, %s, %s, %s::vector)",
-            (cid, did, content, "[" + ",".join(map(str, vec)) + "]"))
+for (cid, did, content), vec in zip(docs, vectors):
+    cur.execute(
+        "INSERT INTO doc_embeddings (contract_id, doc_id, content, embedding) VALUES (%s, %s, %s, %s::vector)",
+        (cid, did, content, "[" + ",".join(map(str, vec)) + "]"))
 cur.execute("SELECT count(*) FROM doc_embeddings")
 print(f"stored {cur.fetchone()[0]} rows in doc_embeddings")
 
