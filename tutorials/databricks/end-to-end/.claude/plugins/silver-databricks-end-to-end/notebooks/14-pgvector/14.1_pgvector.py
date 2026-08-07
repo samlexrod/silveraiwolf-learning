@@ -117,6 +117,34 @@ print(f"stored {cur.fetchone()[0]} rows in doc_embeddings")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Peek at what you stored
+# MAGIC The next cell previews five rows of `doc_embeddings` so the store isn't abstract. You'll see:
+# MAGIC - **`contract_id`** — the join key into the live `contracts` table (what makes Section 5's filter possible)
+# MAGIC - **`content_preview`** — the document text that got embedded
+# MAGIC - **`dims`** — `1024`, the width of a `databricks-bge-large-en` vector
+# MAGIC - **`embedding_head`** — the first few of those 1024 floats, so you can actually *see* the vector
+# MAGIC
+# MAGIC Each row is one document's *meaning* stored as numbers, sitting right beside your transactional rows.
+
+# COMMAND ----------
+
+import pandas as pd
+
+preview = cur.execute("""
+    SELECT contract_id,
+           doc_id,
+           left(content, 40)                AS content_preview,
+           vector_dims(embedding)           AS dims,
+           left(embedding::text, 40) || '…' AS embedding_head
+    FROM doc_embeddings
+    ORDER BY contract_id
+    LIMIT 5
+""").fetchall()
+display(pd.DataFrame(preview, columns=["contract_id", "doc_id", "content_preview", "dims", "embedding_head"]))
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 3 — Index for fast nearest-neighbor search (HNSW)
 # MAGIC Without an index, a query scans every row (fine for 85 docs; not for millions). **HNSW** is pgvector's
 # MAGIC approximate-nearest-neighbor index — `vector_cosine_ops` matches the `<=>` (cosine distance) operator we
