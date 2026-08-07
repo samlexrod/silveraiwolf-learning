@@ -13,7 +13,7 @@
 # MAGIC *"find the **delinquent** contracts that are about earth-moving equipment"* — vector search and structured
 # MAGIC filter in **one engine, against live rows**, no fan-out to a separate store and back.
 # MAGIC
-# MAGIC **The ceiling (be honest):** at large scale, big document sets, or governed lakehouse RAG, the managed
+# MAGIC **The ceiling:** at large scale, big document sets, or governed lakehouse RAG, the managed
 # MAGIC Vector Search (Stage 13) is the better fit. pgvector shines when the data is **small-to-medium** and you'd
 # MAGIC rather not run a second system — and you do own the embed + keeping the vectors fresh (a Delta→Lakebase
 # MAGIC refresh), where Stage 13's delta-sync handled that for you.
