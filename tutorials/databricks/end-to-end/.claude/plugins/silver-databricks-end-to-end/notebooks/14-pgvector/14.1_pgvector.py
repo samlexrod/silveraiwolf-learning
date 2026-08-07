@@ -28,9 +28,11 @@
 
 # COMMAND ----------
 
-# MAGIC # -U forces the newest databricks-sdk: the autoscaling-Postgres API (`w.postgres`) isn't in older
-# MAGIC # pre-installed runtime versions, and a bare `>=` floor lets the run keep a stale one.
-# MAGIC %pip install -U pg8000 "databricks-sdk>=0.104.0" -q
+# MAGIC # Install **pure** psycopg — NOT `psycopg[binary]`. The binary wheel bundles its own libpq, which
+# MAGIC # SIGABRTs ("the Python kernel is unresponsive") on this serverless runtime once Spark's native libs
+# MAGIC # (pyarrow/grpc) are loaded. Pure psycopg links the runtime's **system** libpq — same OpenSSL as those
+# MAGIC # libs, so no conflict. `-U` also pulls a databricks-sdk new enough for the autoscaling API (`w.postgres`).
+# MAGIC %pip install -U psycopg "databricks-sdk>=0.104.0" -q
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -42,8 +44,7 @@
 
 # COMMAND ----------
 
-import ssl
-import pg8000.dbapi
+import psycopg
 from databricks.sdk import WorkspaceClient
 
 ENDPOINT = "projects/silverline-oltp/branches/production/endpoints/primary"  # Autoscaling project (PG17)
@@ -52,18 +53,10 @@ HOST  = w.postgres.get_endpoint(ENDPOINT).status.hosts.host
 USER  = w.current_user.me().user_name
 TOKEN = w.postgres.generate_database_credential(ENDPOINT).token
 
-# Connect with pg8000 — a **pure-Python** Postgres driver.
-# Driver note: Databricks' docs recommend psycopg (`psycopg[binary]`). We tested it here and it **SIGABRTs
-# (exit 134 → "the Python kernel is unresponsive") on this Free-Edition serverless runtime** — it survives a
-# bare connect but crashes the *full* notebook, where its bundled libpq/OpenSSL aborts alongside the
-# pandas/pyarrow/grpc native libs Spark loads. pg8000 has no native code, so it can't — it runs the whole
-# workload green. Lakebase requires SSL; an encrypt-only context matches `sslmode=require`.
-ssl_ctx = ssl.create_default_context()
-ssl_ctx.check_hostname = False
-ssl_ctx.verify_mode = ssl.CERT_NONE
-conn = pg8000.dbapi.connect(host=HOST, port=5432, database="databricks_postgres", user=USER,
-                            password=TOKEN, ssl_context=ssl_ctx)
-conn.autocommit = True
+# One autocommit connection reused across the cells below. psycopg (psycopg3) is Databricks' documented
+# Lakebase driver; the SDK mints a short-lived OAuth token used as the Postgres password.
+conn = psycopg.connect(host=HOST, port=5432, dbname="databricks_postgres", user=USER,
+                       password=TOKEN, sslmode="require", autocommit=True)
 cur = conn.cursor()
 
 cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
