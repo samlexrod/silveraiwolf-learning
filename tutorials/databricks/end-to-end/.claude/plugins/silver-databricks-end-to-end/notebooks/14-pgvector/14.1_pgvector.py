@@ -159,6 +159,70 @@ print("HNSW cosine index ready")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### See *why* the index matters — benchmark it yourself
+# MAGIC Our 85 docs are too few to feel the difference, so the next cells time a nearest-neighbor query on a
+# MAGIC **scratch table of 5,000 random vectors** — first with **no index**, then with **HNSW**. Watch two things
+# MAGIC in the output: the query **plan** (`Seq Scan` → `Index Scan`) and the **milliseconds**. The scratch table
+# MAGIC is dropped at the end; your real `doc_embeddings` keeps the index built above.
+
+# COMMAND ----------
+
+import numpy as np
+import time
+
+N = 5000
+cur.execute("DROP TABLE IF EXISTS bench_index_demo")
+cur.execute("CREATE TABLE bench_index_demo (id int, embedding vector(1024))")
+V = np.random.default_rng(0).random((N, 1024), dtype="float32")
+with cur.copy("COPY bench_index_demo (id, embedding) FROM STDIN") as cp:      # fast bulk load
+    for i in range(N):
+        cp.write_row([i, "[" + ",".join(map(str, V[i].tolist())) + "]"])
+QUERY_VEC = "[" + ",".join(map(str, np.random.default_rng(1).random(1024, dtype="float32").tolist())) + "]"
+
+KNN = "SELECT id FROM bench_index_demo ORDER BY embedding <=> %s::vector LIMIT 5"
+
+def knn_ms(reps=5):
+    best = 1e9
+    for _ in range(reps):
+        t0 = time.perf_counter()
+        cur.execute(KNN, (QUERY_VEC,)).fetchall()
+        best = min(best, time.perf_counter() - t0)
+    return best * 1000
+
+def plan_line():                                                             # the Seq/Index Scan node
+    return next(r[0].strip() for r in cur.execute("EXPLAIN " + KNN, (QUERY_VEC,)).fetchall() if "Scan" in r[0])
+
+print(f"loaded {N} random vectors into bench_index_demo")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **Without an index** — Postgres compares your query to *every* row (a sequential scan):
+
+# COMMAND ----------
+
+print("plan:", plan_line())                       # -> Seq Scan on bench_index_demo
+no_index_ms = knn_ms()
+print(f"no index (sequential scan): {no_index_ms:6.1f} ms")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **With HNSW** — the *identical* query, now navigating the index graph:
+
+# COMMAND ----------
+
+cur.execute("CREATE INDEX ON bench_index_demo USING hnsw (embedding vector_cosine_ops)")
+print("plan:", plan_line())                       # -> Index Scan using ..._hnsw
+with_index_ms = knn_ms()
+print(f"with HNSW index:            {with_index_ms:6.1f} ms   →   ~{no_index_ms/with_index_ms:.0f}x faster")
+
+cur.execute("DROP TABLE bench_index_demo")
+print("scratch table dropped — your doc_embeddings index (above) stays")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 4 — Retrieve by meaning (cosine `<=>`)
 # MAGIC Embed the question the same way, then order by cosine distance. `1 - (embedding <=> q)` is the cosine
 # MAGIC **similarity** (higher = closer). This is the pgvector equivalent of Stage 13's `vector_search()`.

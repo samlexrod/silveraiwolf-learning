@@ -98,7 +98,14 @@ CREATE INDEX ON doc_embeddings USING hnsw (embedding vector_cosine_ops);
 
 > ✅ **Verified live on Free Edition:** the HNSW index builds successfully.
 
-**Pause.** Confirm the HNSW index was created (render as `AskUserQuestion`).
+> ⏱️ **Feel it — the notebook benchmarks it, not takes it on faith.** 85 docs is too small to notice, so `14.1`
+> builds a **5,000-vector scratch table** and times the *same* nearest-neighbor query **with no index vs with
+> HNSW** — printing the query **plan** (`Seq Scan` → `Index Scan`) and the **milliseconds** (~21 ms → ~5 ms,
+> **~4× faster**, verified live), then drops the scratch table. The plan flip is the "aha": the same SQL, a
+> different execution strategy once the index exists.
+
+**Pause.** Confirm the HNSW index was created, and that the benchmark showed the plan flip (`Seq Scan` →
+`Index Scan`) with a clear speedup (render as `AskUserQuestion`).
 
 ---
 
