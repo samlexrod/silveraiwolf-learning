@@ -15,8 +15,9 @@
 # MAGIC
 # MAGIC **The ceiling:** at large scale, big document sets, or governed lakehouse RAG, the managed
 # MAGIC Vector Search (Stage 13) is the better fit. pgvector shines when the data is **small-to-medium** and you'd
-# MAGIC rather not run a second system — and you do own the embed + keeping the vectors fresh (a Delta→Lakebase
-# MAGIC refresh), where Stage 13's delta-sync handled that for you.
+# MAGIC rather not stand up — and **pay for** — a separate, dedicated vector-search service just to add search to a
+# MAGIC database you already run. (You do own the embed + keeping the vectors fresh — a Delta→Lakebase refresh —
+# MAGIC where Stage 13's delta-sync handled that for you.)
 # MAGIC
 # MAGIC > 🧭 **Delta-sync (Stage 13) vs pgvector (here).** There the index embedded + synced *for* you off a Delta
 # MAGIC > table. Here **you** embed the docs and `INSERT` the vectors yourself — the trade is more control and a
@@ -299,7 +300,8 @@ display(search("financing for heavy earth-moving machinery"))
 # MAGIC | Reach for it when | **large** corpora · governed lakehouse RAG · scale | **small-to-medium** data · no separate service (cheaper) · retrieval next to app data |
 # MAGIC
 # MAGIC Same embedding model, same corpus — **two options for two scales**: the managed service when you need
-# MAGIC governance + scale, pgvector when the data is small-to-medium and you'd rather not run a second system.
+# MAGIC governance + scale, pgvector when the data is small-to-medium and you'd rather not run — and pay for — a
+# MAGIC separate, dedicated vector-search service.
 # MAGIC
 # MAGIC > 🧹 The `doc_embeddings` table lives on the Lakebase `production` branch; the tutorial's `cleanup` drops it
 # MAGIC > with the Lakebase project. Nothing here costs money — quota only.

@@ -9,9 +9,9 @@
 
 Stage 13 built a **managed, lakehouse-native** retriever (Mosaic AI Vector Search). This stage shows the
 **lighter-weight alternative** — **pgvector** inside the `silverline-oltp` Lakebase Postgres you already run.
-It's the **cheaper option for small-to-medium corpora**: when the document set doesn't justify a dedicated
-vector-search service, keep the embeddings in the same Postgres as your transactional rows. Same contract
-corpus, no separate store to operate.
+It's the **cheaper option for small-to-medium corpora**: when the document set doesn't justify standing up
+(and paying for) a dedicated vector-search service, keep the embeddings in the same Postgres as your
+transactional rows. Same contract corpus, no separate paid service to run.
 
 | Retriever | Best for | Where it lives |
 |---|---|---|
