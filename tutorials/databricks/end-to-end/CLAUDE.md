@@ -13,7 +13,7 @@ AskUserQuestion/Task-tool usage, presentation rules). Where they conflict, **thi
 Teach the data + AI **workloads** you can run on **Databricks Free Edition** — **$0, serverless-only, no
 cloud account or infrastructure**. It's the no-cloud, Free Edition counterpart to a full cloud-infra
 deployment (Azure/Terraform) — Free Edition has no infrastructure layer to provision. **One tutorial, installed once,
-walked as 13 ordered stages** (setup → lakebase → lakehouse → analytics → retrieval) — Free Edition is a
+walked as 14 ordered stages** (setup → lakebase → lakehouse → analytics → retrieval) — Free Edition is a
 platform/sandbox and the stages build on each other, so it's a single continuous path, not separate
 tracks.
 
@@ -84,11 +84,12 @@ per-stage skills** (they cluttered the menu):
 - `commands/cleanup.md` — `/silver-databricks-end-to-end:cleanup`. Tears down **every** resource the tutorial
   created (back to the fresh $0 state) by running `scripts/cleanup.sh` (idempotent); keeps the shared Starter
   Warehouse, and reminds about the learner-owned AWS resources it can't touch.
-- `stages/NN-<name>.md` — the 13 stage docs (plain markdown, **not** invokable skills), read on demand by
+- `stages/NN-<name>.md` — the 14 stage docs (plain markdown, **not** invokable skills), read on demand by
   the orchestrator. Setup `01-connect · 02-landing-zone · 03-project`; Lakebase `04-provision · 05-seed ·
   06-data-api`; Lakehouse `07-ingest · 08-medallion · 09-refresh`; Analytics `10-business-layer ·
   11-semantic · 12-ai-bi`; Retrieval `13-vector-search` (Mosaic AI Vector Search over the seeded contract
-  docs → a UC-function retriever tool).
+  docs → a UC-function retriever tool) + `14-pgvector` (pgvector inside the Lakebase OLTP → semantic
+  retrieval + a transactional filter in one SQL).
 
 That's the **entire shipped tutorial** — `plugin.json` + `commands/{start,cleanup}.md` + `stages/`.
 Nothing else in the plugin dir.
@@ -105,6 +106,18 @@ instant `ready=True` can 400 during a re-sync (retry). `vector_search`'s `num_re
 TVF returns `chunk_id · doc_id · doc_type · source_path · content · search_score`. Deliverables: notebooks
 `13.1_build_index` (parse→index) + `13.2_retrieval` (four ways); the `silverline.gold.search_docs(query)` UC
 function is the retriever tool a future agent can wield alongside Genie.
+
+**Retrieval stage (14, `pgvector`) — verified facts (live 2026-07-30, see [[lakebase-pgvector-verified]]).**
+pgvector works on FE Lakebase: `CREATE EXTENSION vector` (0.8.0), `vector(1024)`, HNSW (`vector_cosine_ops`),
+cosine `<=>`. Embed the seeded docs with `databricks-bge-large-en`, `INSERT … ::vector` keyed by `contract_id`,
+then the payoff — semantic retrieval **+ a transactional filter** in one SQL by joining `doc_embeddings` to the
+live `contracts` table (`WHERE status IN (…) ORDER BY embedding <=> q`). **Connect with pure `psycopg`
+(psycopg3) — install `psycopg`, NOT `psycopg[binary]`:** the binary wheel's bundled libpq SIGABRTs on the
+serverless runtime once Spark's pyarrow/grpc native libs are loaded (crashes the *full* notebook though a bare
+connect passes); the pure build links the runtime's **system** libpq (same OpenSSL) → no conflict. Also **force
+`-U databricks-sdk>=0.104.0`** because `w.postgres` is absent on older pre-installed SDKs. Caveat: an idle
+`production` branch may read `ARCHIVED` but still connects (auto-resume).
+Deliverable: notebook `14.1_pgvector`. (See [[lakebase-pgvector-verified]] + [[lakebase-notebook-query-pattern]].)
 
 **Agentic reporting — a planned future capstone (not in this 13-stage release).** A later tutorial/PR will add
 an agentic-reporting phase (Lakebase copy-on-write branching + an Omnigent agent driving the loop); it is
