@@ -232,7 +232,7 @@ print("scratch table dropped — your doc_embeddings index (above) stays")
 # MAGIC >
 # MAGIC > | Metric | pgvector | On `a,b` | Intuition |
 # MAGIC > |---|---|---|---|
-# MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | **as-the-crow-flies** — the straight-line gap between the two arrowheads (`√(3²+4²+5²)`). |
+# MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | **straight over the buildings** (as the crow flies) — the direct line between the two arrowheads (`√(3²+4²+5²)`); the taxi below has to go *around* them. |
 # MAGIC > | **Manhattan / L1** | `<+>` (`vector_l1_ops`) | `12` | **the taxicab** — a cab can't cut diagonally through Manhattan's buildings, so it drives the grid: sum of the blocks per dimension (`\|3\|+\|4\|+\|5\|`). |
 # MAGIC > | **Cosine** | `<=>` (`vector_cosine_ops`) | `0.007` | **the angle** between the arrows, **ignoring length** — do they *point the same way*? |
 # MAGIC >
