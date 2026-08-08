@@ -224,8 +224,23 @@ print("scratch table dropped — your doc_embeddings index (above) stays")
 
 # MAGIC %md
 # MAGIC ## 4 — Retrieve by meaning (cosine `<=>`)
-# MAGIC Embed the question the same way, then order by cosine distance. `1 - (embedding <=> q)` is the cosine
-# MAGIC **similarity** (higher = closer). This is the pgvector equivalent of Stage 13's `vector_search()`.
+# MAGIC Embed the question the same way, then order by **cosine distance** (`<=>`). `1 - (embedding <=> q)` is the
+# MAGIC cosine **similarity** (higher = closer). This is the pgvector equivalent of Stage 13's `vector_search()`.
+# MAGIC
+# MAGIC > 📐 **"Distance" between two vectors — three common ones; pick by what you're comparing.** Picture each
+# MAGIC > embedding as an arrow from the origin in 1024-D space, and take two of them, `a=[1,2,3]` and `b=[4,6,8]`:
+# MAGIC >
+# MAGIC > | Metric | pgvector | On `a,b` | Intuition |
+# MAGIC > |---|---|---|---|
+# MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | **as-the-crow-flies** — the straight-line gap between the two arrowheads (`√(3²+4²+5²)`). |
+# MAGIC > | **Manhattan / L1** | `<+>` (`vector_l1_ops`) | `12` | **the taxicab** — a cab can't cut diagonally through Manhattan's buildings, so it drives the grid: sum of the blocks per dimension (`\|3\|+\|4\|+\|5\|`). |
+# MAGIC > | **Cosine** | `<=>` (`vector_cosine_ops`) | `0.007` | **the angle** between the arrows, **ignoring length** — do they *point the same way*? |
+# MAGIC >
+# MAGIC > **Why cosine for text?** The model encodes *meaning as direction*; a vector's **length** tends to track
+# MAGIC > doc length / word count — which we don't want deciding a "same topic?" match. Cosine throws length away
+# MAGIC > and compares direction only, so a one-paragraph memo and a ten-page contract about the same thing still
+# MAGIC > score close. That's why it's the default for semantic search — and why our HNSW index was built with
+# MAGIC > `vector_cosine_ops`. (Reach for L2/L1 when magnitude *is* the signal — raw counts, coordinates, pixels.)
 
 # COMMAND ----------
 
