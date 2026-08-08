@@ -232,8 +232,10 @@ print("scratch table dropped — your doc_embeddings index (above) stays")
 # MAGIC >
 # MAGIC > | Metric | pgvector | On `a,b` | Intuition |
 # MAGIC > |---|---|---|---|
-# MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | **straight over the buildings** (as the crow flies) — the direct line between the two arrowheads (`√(3²+4²+5²)`); the taxi below has to go *around* them. |
-# MAGIC > | **Manhattan / L1** | `<+>` (`vector_l1_ops`) | `12` | **the taxicab** — a cab can't cut diagonally through Manhattan's buildings, so it drives the grid: sum of the blocks per dimension (`\|3\|+\|4\|+\|5\|`). |
+# MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | the **pigeon** — it flies straight over the Manhattan rooftops, corner to corner in one diagonal hop (`√(3²+4²+5²)`). |
+# MAGIC > | **Manhattan / L1** | `<+>` (`vector_l1_ops`) | `12` | the **yellow cab** — it can't fly, so it drives the blocks one direction at a time and adds them up: 3 + 4 + 5 = 12, never diagonal (`\|3\|+\|4\|+\|5\|`). |
+# MAGIC >
+# MAGIC > *(Same trip across Manhattan, two ways: the pigeon takes the straight line, the cab counts the blocks. And `<=>` for text just asks whether the two are headed the **same way** — angle, not distance.)*
 # MAGIC > | **Cosine** | `<=>` (`vector_cosine_ops`) | `0.007` | **the angle** between the arrows, **ignoring length** — do they *point the same way*? |
 # MAGIC >
 # MAGIC > **Why cosine for text?** The model encodes *meaning as direction*; a vector's **length** tends to track

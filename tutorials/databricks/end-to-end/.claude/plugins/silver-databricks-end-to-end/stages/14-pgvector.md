@@ -114,10 +114,10 @@ CREATE INDEX ON doc_embeddings USING hnsw (embedding vector_cosine_ops);
 Embed the question the same way, then order by cosine distance — `1 - (embedding <=> q)` is the cosine
 **similarity** (higher = closer). This is the pgvector equivalent of Stage 13's `vector_search()`:
 
-> 📐 **cosine vs the alternatives.** pgvector offers three distances: **Euclidean / L2** (`<->`) — **straight
-> over the buildings** ("as the crow flies"), the direct line between the points; **Manhattan / L1** (`<+>`) —
-> the **taxicab** that can't fly over, so it drives *around* the grid, summing the blocks per dimension; and
-> **cosine** (`<=>`) — the *angle*
+> 📐 **cosine vs the alternatives** — picture crossing Manhattan. pgvector offers three distances:
+> **Euclidean / L2** (`<->`) — the **pigeon** that flies straight over the rooftops, corner to corner in one
+> diagonal hop; **Manhattan / L1** (`<+>`) — the **yellow cab** that can't fly, so it drives the blocks (so many
+> avenues over **+** so many streets up, no diagonals); and **cosine** (`<=>`) — the *angle*
 > between the vectors, **ignoring length**. Text embeddings encode meaning as *direction* (a vector's length
 > tracks doc size, which shouldn't decide a "same topic?" match), so **cosine** is the default — which is why
 > the notebook's HNSW index used `vector_cosine_ops`.
