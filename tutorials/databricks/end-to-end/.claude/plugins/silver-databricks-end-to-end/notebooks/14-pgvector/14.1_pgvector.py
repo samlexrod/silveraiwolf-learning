@@ -234,9 +234,9 @@ print("scratch table dropped — your doc_embeddings index (above) stays")
 # MAGIC > |---|---|---|---|
 # MAGIC > | **Euclidean / L2** | `<->` (`vector_l2_ops`) | `7.07` | the **pigeon** — it flies straight over the Manhattan rooftops, corner to corner in one diagonal hop (`√(3²+4²+5²)`). |
 # MAGIC > | **Manhattan / L1** | `<+>` (`vector_l1_ops`) | `12` | the **yellow cab** — it can't fly, so it drives the blocks one direction at a time and adds them up: 3 + 4 + 5 = 12, never diagonal (`\|3\|+\|4\|+\|5\|`). |
-# MAGIC >
-# MAGIC > *(Same trip across Manhattan, two ways: the pigeon takes the straight line, the cab counts the blocks. And `<=>` for text just asks whether the two are headed the **same way** — angle, not distance.)*
 # MAGIC > | **Cosine** | `<=>` (`vector_cosine_ops`) | `0.007` | **the angle** between the arrows, **ignoring length** — do they *point the same way*? |
+# MAGIC >
+# MAGIC > *Same trip across Manhattan, two ways: the pigeon flies the straight line, the cab counts the blocks. Cosine is a different question again — it ignores distance entirely and asks only whether two vectors point the **same way**.*
 # MAGIC >
 # MAGIC > **Why cosine for text?** The model encodes *meaning as direction*; a vector's **length** tends to track
 # MAGIC > doc length / word count — which we don't want deciding a "same topic?" match. Cosine throws length away
